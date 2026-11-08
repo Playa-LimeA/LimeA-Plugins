@@ -1,7 +1,7 @@
 {
   "id": "connectors.gmail",
   "name": "Gmail（待谷歌认证）",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "apiVersion": 10,
   "hostVersion": ">=0.1.0",
   "entry": "backend.mjs",
@@ -22,9 +22,7 @@
       "description": "按 Gmail 搜索语法查找当前邮箱的邮件，返回发件人、主题及摘要。使用 pageToken 翻页。",
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read",
       "inputSchema": {
@@ -56,9 +54,7 @@
       "description": "读取指定邮件的纯文本、收发件人和附件名称。",
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read",
       "inputSchema": {
@@ -83,9 +79,7 @@
       "description": "读取会话中的邮件。用 offset 从指定邮件继续阅读。",
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read",
       "inputSchema": {
@@ -115,9 +109,7 @@
       "description": "列出当前邮箱的系统和自定义标签。",
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read",
       "inputSchema": {
@@ -133,9 +125,7 @@
       "description": "生成未发送的纯文本草稿。to 是收件地址数组。",
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "write",
       "inputSchema": {
@@ -176,9 +166,7 @@
       "description": "发送本次给出的完整正文。仅用于用户明确要求发送的邮件。to 是收件地址数组。",
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "write",
       "inputSchema": {
@@ -219,9 +207,7 @@
       "description": "标为已读、未读，加星、去星、归档或移回收件箱。",
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "write",
       "inputSchema": {
@@ -258,9 +244,7 @@
       "description": "将指定邮件移入 Gmail 回收站。",
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "write",
       "inputSchema": {

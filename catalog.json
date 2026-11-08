@@ -28,15 +28,15 @@
       "name": "GitHub",
       "description": "连接 GitHub，搜索和读取仓库内容，处理议题、拉取请求、发布和自动化运行。",
       "author": "Playa",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "hostVersion": ">=0.1.0",
       "category": "code",
       "tier": "official",
       "permissions": [],
-      "archive": "plugins/connectors.github/1.0.1.zip",
-      "sha256": "afa00fbe01568c77d1bb67aa0de204c818e02803ca6f1d2dde3a277a28a06669",
+      "archive": "plugins/connectors.github/1.0.2.zip",
+      "sha256": "c36cf90e565d3567af904015c8c77654ac2390626ea7a79b9287c20a1d56e8a4",
       "icon": {
-        "path": "icons/connectors.github/1.0.1.png",
+        "path": "icons/connectors.github/1.0.2.png",
         "sha256": "6d6ef7bede0416b6ebee2014be5852576dbce89235fe16ea5c44ed01bd522132"
       }
     },
@@ -45,15 +45,15 @@
       "name": "Gmail（待谷歌认证）",
       "description": "连接 Google 邮箱，在 LimeA 中搜索和阅读邮件、创建草稿、发送及整理邮件。",
       "author": "Playa",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "hostVersion": ">=0.1.0",
       "category": "communication",
       "tier": "official",
       "permissions": [],
-      "archive": "plugins/connectors.gmail/1.0.3.zip",
-      "sha256": "621fca4fc0bec526935f0d4739bbf98702b4348909eb3ae201be492d017dde30",
+      "archive": "plugins/connectors.gmail/1.0.4.zip",
+      "sha256": "f44d747a797ccfcc8c86f03b75c2cb011be8c5bf4e0e71034e4629fb2d14d548",
       "icon": {
-        "path": "icons/connectors.gmail/1.0.3.png",
+        "path": "icons/connectors.gmail/1.0.4.png",
         "sha256": "a5cf5c35082aa506518402699c5c5bbc2416742904c60a8cdd81731a2b080bad"
       }
     },
@@ -62,24 +62,24 @@
       "name": "Notion",
       "description": "连接 Notion 工作区，搜索和读取已共享页面、数据源与评论，并按当前会话权限创建或更新页面、编辑内容块及发表评论。凭据由宿主管理，需要支持读写审批的新版本 LimeA。",
       "author": "Playa",
-      "version": "2.1.1",
+      "version": "2.1.2",
       "hostVersion": ">=0.1.0",
       "category": "efficiency",
       "tier": "official",
       "permissions": [],
-      "archive": "plugins/connectors.notion/2.1.1.zip",
-      "sha256": "532c4c7ba111b08f353e6625c239caf5fa8edc20d68c42ed4eed98831f282aed",
+      "archive": "plugins/connectors.notion/2.1.2.zip",
+      "sha256": "62a2362bd36fea876323b6e18bfcaff0292258fa2b676c2c1827a88cbebaa037",
       "icon": {
-        "path": "icons/connectors.notion/2.1.1.png",
+        "path": "icons/connectors.notion/2.1.2.png",
         "sha256": "483846a85e43e22879445047b83b22033e70fcc25ab34809ebadb7f856507ee0"
       }
     },
     {
       "id": "games.draw_guess",
       "name": "你画我猜",
-      "description": "和当前角色轮流画画、猜词。后台独立出题，画家三选一，双方获得字数提示；用户边画角色边猜，角色也能看着实际画面补画。支持闭合区域填色、画笔与操作音效、撤销重做、暂停恢复和聊天内轮次回顾，不设积分。安装并启用后，在 Chat 模式右侧的“小游戏”中打开，也可从插件详情页查看玩法说明。需要支持插件接口版本 11 的 LimeA 和支持图片输入的模型。",
+      "description": "和当前角色轮流画画、猜词。后台独立出题，画家三选一，双方获得字数提示；用户边画角色边猜，角色也能看着实际画面补画。支持闭合区域填色、画笔与操作音效、撤销重做、暂停恢复和聊天内轮次回顾，不设积分。安装并启用后，在 Chat 模式右侧的“小游戏”中打开，也可从插件详情页查看玩法说明。需要支持插件接口版本 12 的 LimeA 和支持图片输入的模型。",
       "author": "Playa",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "hostVersion": ">=0.1.0 <1.0.0",
       "category": "games",
       "tier": "official",
@@ -87,48 +87,48 @@
         "fs:plugin-data",
         "model:private-task"
       ],
-      "archive": "plugins/games.draw_guess/0.2.1.zip",
-      "sha256": "c477bcb2963f62df6e10e1404b60b7523596890ca317b80dc553f8035621be28",
+      "archive": "plugins/games.draw_guess/0.2.2.zip",
+      "sha256": "085881b483f3005b15940d83a6ad6746aa51c6f8d83bf2cd5fe57f5ce204494a",
       "icon": {
-        "path": "icons/games.draw_guess/0.2.1.png",
+        "path": "icons/games.draw_guess/0.2.2.png",
         "sha256": "4f15488058a2cb37f8c7c304f4f5a80c6e920100ed0d2d6d66179a02bc95473e"
       }
     },
     {
       "id": "games.gomoku",
       "name": "五子棋",
-      "description": "和当前角色一起下五子棋。可选模型落子或引擎辅助，普通、困难两档分析，提供三个候选点供角色决定。支持落子音效、胜负计分、续局、中断恢复及聊天内历史棋谱查询。可在插件详情页调整对局设置；每轮明确双方执子与落点。安装并启用后，在 Chat 模式右侧的“小游戏”中打开，也可从插件详情页查看玩法说明。需要支持插件接口版本 11 的 LimeA。",
+      "description": "和当前角色一起下五子棋。可选模型落子或引擎辅助，普通、困难两档分析，提供三个候选点供角色决定。支持落子音效、胜负计分、续局、中断恢复及聊天内历史棋谱查询。可在插件详情页调整对局设置；每轮明确双方执子与落点。安装并启用后，在 Chat 模式右侧的“小游戏”中打开，也可从插件详情页查看玩法说明。需要支持插件接口版本 12 的 LimeA。",
       "author": "Playa",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "hostVersion": ">=0.1.0 <1.0.0",
       "category": "games",
       "tier": "official",
       "permissions": [
         "fs:plugin-data"
       ],
-      "archive": "plugins/games.gomoku/0.3.1.zip",
-      "sha256": "5563c1cb10779524e3be34a6dc8d1eddd433ebb943d94f85172c2c4efa42a772",
+      "archive": "plugins/games.gomoku/0.3.2.zip",
+      "sha256": "7cd9c22f0ca5a38972797e181e7440670488d46c076347dfd6985b1699aab41f",
       "icon": {
-        "path": "icons/games.gomoku/0.3.1.png",
+        "path": "icons/games.gomoku/0.3.2.png",
         "sha256": "3173cb4b1075293e6e9f95d7259a059454b0c74fc6098b3ca8c090bf1f8b00d9"
       }
     },
     {
       "id": "games.shark",
       "name": "鲨鱼咬牙",
-      "description": "按下鲨鱼的牙齿，看看谁会碰到那颗危险牙齿。支持单人挑战和角色陪玩，随机先手、轮流按牙、累计计分，还可以再来一局。每段聊天独立保存进度，中断后可继续。安装并启用后，在 Chat 模式右侧的“小游戏”中打开，也可从插件详情页查看玩法说明。角色陪玩使用当前会话模型。需要支持插件接口版本 11 的 LimeA。",
+      "description": "按下鲨鱼的牙齿，看看谁会碰到那颗危险牙齿。支持单人挑战和角色陪玩，随机先手、轮流按牙、累计计分，还可以再来一局。每段聊天独立保存进度，中断后可继续。安装并启用后，在 Chat 模式右侧的“小游戏”中打开，也可从插件详情页查看玩法说明。角色陪玩使用当前会话模型。需要支持插件接口版本 12 的 LimeA。",
       "author": "Playa",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "hostVersion": ">=0.1.0 <1.0.0",
       "category": "games",
       "tier": "official",
       "permissions": [
         "fs:plugin-data"
       ],
-      "archive": "plugins/games.shark/0.4.1.zip",
-      "sha256": "3a3a1c123d250bdbe34be6ade72fc0fa8290bbe441e1aea8a4c7c5ff5d1a9a86",
+      "archive": "plugins/games.shark/0.4.2.zip",
+      "sha256": "20d8b8f4b3f4e8f018c3dd0900cb12dfff114a4b4184ea46d053054964500965",
       "icon": {
-        "path": "icons/games.shark/0.4.1.png",
+        "path": "icons/games.shark/0.4.2.png",
         "sha256": "fef221a79f11861dc58246d12316cffb5aa0c9140f328e20485e059f6286453b"
       }
     }

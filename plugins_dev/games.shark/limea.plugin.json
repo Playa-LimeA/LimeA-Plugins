@@ -1,8 +1,8 @@
 {
   "id": "games.shark",
   "name": "鲨鱼咬牙",
-  "version": "0.4.1",
-  "apiVersion": 11,
+  "version": "0.4.2",
+  "apiVersion": 12,
   "hostVersion": ">=0.1.0 <1.0.0",
   "entry": "backend.mjs",
   "permissions": [
@@ -42,7 +42,8 @@
       "modes": [
         "chat"
       ],
-      "panelId": "games.shark.play"
+      "panelId": "games.shark.play",
+      "access": "local"
     },
     {
       "id": "press_tooth",
@@ -74,7 +75,8 @@
       "modes": [
         "chat"
       ],
-      "panelId": "games.shark.play"
+      "panelId": "games.shark.play",
+      "access": "local"
     }
   ]
 }

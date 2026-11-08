@@ -8,12 +8,12 @@
 | 序号 | 图标 | 名称 | 作者 | 协议 | 源码／原仓库 | 文档 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | <img src="icons/appearance.wallpaper/0.2.0.png" width="40" height="40" alt=""> | 壁纸与玻璃外观 | Playa | [MIT](plugins_dev/appearance.wallpaper/LICENSE) · [素材说明](plugins_dev/appearance.wallpaper/ASSETS.md) | [本仓库](plugins_dev/appearance.wallpaper) | [说明](plugins_dev/appearance.wallpaper/README.md) |
-| 2 | <img src="icons/connectors.github/1.0.1.png" width="40" height="40" alt=""> | GitHub | Playa | [MIT](plugins_dev/connectors.github/LICENSE) | [本仓库](plugins_dev/connectors.github) | [说明](plugins_dev/connectors.github/README.md) |
-| 3 | <img src="icons/connectors.gmail/1.0.3.png" width="40" height="40" alt=""> | Gmail（待谷歌认证） | Playa | [MIT](plugins_dev/connectors.gmail/LICENSE) | [本仓库](plugins_dev/connectors.gmail) | [说明](plugins_dev/connectors.gmail/README.md) |
-| 4 | <img src="icons/connectors.notion/2.1.1.png" width="40" height="40" alt=""> | Notion | Playa | [MIT](plugins_dev/connectors.notion/LICENSE) | [本仓库](plugins_dev/connectors.notion) | [说明](plugins_dev/connectors.notion/README.md) |
-| 5 | <img src="icons/games.draw_guess/0.2.1.png" width="40" height="40" alt=""> | 你画我猜 | Playa | [MIT](plugins_dev/games.draw_guess/LICENSE) · [素材说明](plugins_dev/games.draw_guess/ASSETS.md) | [本仓库](plugins_dev/games.draw_guess) | [说明](plugins_dev/games.draw_guess/README.md) |
-| 6 | <img src="icons/games.gomoku/0.3.1.png" width="40" height="40" alt=""> | 五子棋 | Playa | [MIT](plugins_dev/games.gomoku/LICENSE) · [素材说明](plugins_dev/games.gomoku/ASSETS.md) | [本仓库](plugins_dev/games.gomoku) | [说明](plugins_dev/games.gomoku/README.md) |
-| 7 | <img src="icons/games.shark/0.4.1.png" width="40" height="40" alt=""> | 鲨鱼咬牙 | Playa | [MIT](plugins_dev/games.shark/LICENSE) · [素材说明](plugins_dev/games.shark/ASSETS.md) | [本仓库](plugins_dev/games.shark) | [说明](plugins_dev/games.shark/README.md) |
+| 2 | <img src="icons/connectors.github/1.0.2.png" width="40" height="40" alt=""> | GitHub | Playa | [MIT](plugins_dev/connectors.github/LICENSE) | [本仓库](plugins_dev/connectors.github) | [说明](plugins_dev/connectors.github/README.md) |
+| 3 | <img src="icons/connectors.gmail/1.0.4.png" width="40" height="40" alt=""> | Gmail（待谷歌认证） | Playa | [MIT](plugins_dev/connectors.gmail/LICENSE) | [本仓库](plugins_dev/connectors.gmail) | [说明](plugins_dev/connectors.gmail/README.md) |
+| 4 | <img src="icons/connectors.notion/2.1.2.png" width="40" height="40" alt=""> | Notion | Playa | [MIT](plugins_dev/connectors.notion/LICENSE) | [本仓库](plugins_dev/connectors.notion) | [说明](plugins_dev/connectors.notion/README.md) |
+| 5 | <img src="icons/games.draw_guess/0.2.2.png" width="40" height="40" alt=""> | 你画我猜 | Playa | [MIT](plugins_dev/games.draw_guess/LICENSE) · [素材说明](plugins_dev/games.draw_guess/ASSETS.md) | [本仓库](plugins_dev/games.draw_guess) | [说明](plugins_dev/games.draw_guess/README.md) |
+| 6 | <img src="icons/games.gomoku/0.3.2.png" width="40" height="40" alt=""> | 五子棋 | Playa | [MIT](plugins_dev/games.gomoku/LICENSE) · [素材说明](plugins_dev/games.gomoku/ASSETS.md) | [本仓库](plugins_dev/games.gomoku) | [说明](plugins_dev/games.gomoku/README.md) |
+| 7 | <img src="icons/games.shark/0.4.2.png" width="40" height="40" alt=""> | 鲨鱼咬牙 | Playa | [MIT](plugins_dev/games.shark/LICENSE) · [素材说明](plugins_dev/games.shark/ASSETS.md) | [本仓库](plugins_dev/games.shark) | [说明](plugins_dev/games.shark/README.md) |
 
 <!-- plugins:end -->
 
@@ -23,9 +23,9 @@
 
 在 LimeA 中打开插件市场，选择插件并安装，再到「管理插件」启用。启用即信任插件代码；声明的权限用于说明用途，不是沙箱。更新保持原有启用状态，重启 LimeA 后生效。
 
-鲨鱼咬牙需要支持插件接口版本 6 的 LimeA；五子棋 0.2.1 需要接口版本 7，并建议更新主程序以使用工具失败后继续纠错的修复。启用后从 Chat 模式右侧「小游戏」打开，五子棋也可从插件管理卡片直接打开设置。具体玩法、构建和授权见对应插件文档。
+鲨鱼咬牙 0.4.2 与五子棋 0.3.2 需要支持插件接口版本 12 的 LimeA；该版本要求插件工具声明写入级别（只读、写插件自身数据或写外部服务）。启用后从 Chat 模式右侧「小游戏」打开，五子棋也可从插件管理卡片直接打开设置。具体玩法、构建和授权见对应插件文档。
 
-你画我猜 0.1.2 需要支持插件接口版本 8 的 LimeA，以及支持图片输入的模型。包含轮流绘画、边画边猜、字数提示、闭合区域填色、绘画音效和暂停恢复；旧版主程序需要先更新，安装插件不能补齐宿主共享画板与私有模型能力。
+你画我猜 0.2.2 需要支持插件接口版本 12 的 LimeA，以及支持图片输入的模型。包含轮流绘画、边画边猜、字数提示、闭合区域填色、绘画音效和暂停恢复；旧版主程序需要先更新，安装插件不能补齐宿主共享画板与私有模型能力。
 
 ## 仓库结构
 

@@ -1,7 +1,7 @@
 {
   "id": "connectors.notion",
   "name": "Notion",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "apiVersion": 10,
   "hostVersion": ">=0.1.0",
   "entry": "backend.mjs",
@@ -42,9 +42,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read"
     },
@@ -66,9 +64,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read"
     },
@@ -99,9 +95,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read"
     },
@@ -132,9 +126,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read"
     },
@@ -158,9 +150,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read"
     },
@@ -184,9 +174,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read"
     },
@@ -232,9 +220,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read"
     },
@@ -268,9 +254,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read"
     },
@@ -319,9 +303,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "write"
     },
@@ -344,9 +326,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "write"
     },
@@ -378,9 +358,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "write"
     },
@@ -408,9 +386,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "write"
     },
@@ -433,9 +409,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "write"
     },
@@ -503,9 +477,7 @@
       },
       "modes": [
         "work",
-        "chat",
-        "learn",
-        "group"
+        "chat"
       ],
       "access": "read"
     }
