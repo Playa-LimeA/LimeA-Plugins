@@ -14,6 +14,7 @@
 | 5 | <img src="icons/games.draw_guess/0.2.2.png" width="40" height="40" alt=""> | 你画我猜 | Playa | [MIT](plugins_dev/games.draw_guess/LICENSE) · [素材说明](plugins_dev/games.draw_guess/ASSETS.md) | [本仓库](plugins_dev/games.draw_guess) | [说明](plugins_dev/games.draw_guess/README.md) |
 | 6 | <img src="icons/games.gomoku/0.3.2.png" width="40" height="40" alt=""> | 五子棋 | Playa | [MIT](plugins_dev/games.gomoku/LICENSE) · [素材说明](plugins_dev/games.gomoku/ASSETS.md) | [本仓库](plugins_dev/games.gomoku) | [说明](plugins_dev/games.gomoku/README.md) |
 | 7 | <img src="icons/games.shark/0.4.2.png" width="40" height="40" alt=""> | 鲨鱼咬牙 | Playa | [MIT](plugins_dev/games.shark/LICENSE) · [素材说明](plugins_dev/games.shark/ASSETS.md) | [本仓库](plugins_dev/games.shark) | [说明](plugins_dev/games.shark/README.md) |
+| 8 | <img src="icons/learn.exam/0.1.0.png" width="40" height="40" alt=""> | 学习试卷 | Playa | [MIT](plugins_dev/learn.exam/LICENSE) | [本仓库](plugins_dev/learn.exam) | [说明](plugins_dev/learn.exam/README.md) |
 
 <!-- plugins:end -->
 
