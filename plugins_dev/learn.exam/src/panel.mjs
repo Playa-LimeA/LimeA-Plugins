@@ -1,5 +1,6 @@
 import renderMathInElement from 'katex/contrib/auto-render';
 import styles from './panel.css';
+import { icon, mountNavigation } from './panel-navigation.mjs';
 import { typeNames, issueNames, sections } from './question-types.mjs';
 
 const phaseNames = {
@@ -103,6 +104,9 @@ export function mount(container, context) {
     footer,
     controls = new Map(),
     navigation = new Map();
+  let navigationView = { current: 'q1' };
+  let navigationHandle = null;
+  const expanded = new Set();
   const scope = () => ({ sessionId: context.sessionId, mode: context.mode });
   const showNotice = (value) => {
     notice = value;
@@ -123,9 +127,11 @@ export function mount(container, context) {
     for (const [id, node] of navigation) {
       node.dataset.answered = String(hasAnswer(draft[id]));
       node.dataset.marked = String(marked.includes(id));
+      const verdict = state?.attempt?.grades[id]?.verdict;
+      node.dataset.verdict = verdict ?? '';
       node.setAttribute(
         'aria-label',
-        `第 ${id.slice(1)} 题${marked.includes(id) ? '，已标记' : ''}`,
+        `第 ${id.slice(1)} 题，${verdict ? verdictNames[verdict] : hasAnswer(draft[id]) ? '已答' : '未答'}${marked.includes(id) ? '，已标记' : ''}`,
       );
     }
     if (clock && state?.attempt) {
@@ -136,7 +142,8 @@ export function mount(container, context) {
       clock.textContent = `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
       clock.dataset.urgent = String(remaining <= 60);
     }
-    for (const node of root.querySelectorAll('[data-model-action]')) node.disabled = busy;
+    for (const node of root.querySelectorAll('[data-model-action], [data-draft-action]'))
+      node.disabled = busy;
   }
   function apply(next) {
     if (disposed) return;
@@ -165,7 +172,11 @@ export function mount(container, context) {
     if (layoutKey !== key) {
       layoutKey = key;
       confirming = false;
-      render();
+      if (changedAttempt) {
+        navigationView = { current: 'q1' };
+        expanded.clear();
+      }
+      render(!changedAttempt);
     } else if (!dirty && !writes.size)
       for (const [id, fields] of controls) {
         for (const input of fields) {
@@ -316,12 +327,32 @@ export function mount(container, context) {
     }
   }
   function modelButton(text, tool, message) {
-    const node = button(text, () => void model(tool, message), 'exam-primary');
+    const node = button(
+      text,
+      () => void model(tool, message),
+      tool === 'review' ? 'exam-explain' : 'exam-primary',
+    );
     node.dataset.modelAction = '';
     node.disabled = busy;
     return node;
   }
-  function render() {
+  function render(preserve = false) {
+    const oldContent = root.querySelector('.exam-content');
+    const scrollTop = preserve ? (oldContent?.scrollTop ?? 0) : 0;
+    const oldTop = oldContent?.getBoundingClientRect().top ?? 0;
+    const anchor = preserve
+      ? [...(oldContent?.querySelectorAll('[data-read-anchor]') ?? [])].findLast(
+          (node) => node.getBoundingClientRect().top <= oldTop + 24,
+        )
+      : null;
+    const anchorKey = anchor?.dataset.readAnchor;
+    const anchorOffset = anchor ? anchor.getBoundingClientRect().top - oldTop : 0;
+    const focused = root.getRootNode().activeElement;
+    const focusedQuestion = preserve ? focused?.closest('[data-question]')?.dataset.question : null;
+    const focusedSummary = focused?.tagName === 'SUMMARY';
+    const focusedNav = preserve ? focused?.dataset.navQuestion : null;
+    navigationHandle?.cleanup();
+    navigationHandle = null;
     controls = new Map();
     navigation = new Map();
     clock = null;
@@ -333,35 +364,36 @@ export function mount(container, context) {
     const titleRow = el('div', 'exam-title-row');
     titleRow.append(el('h2', '', state?.paper?.title ?? '学习试卷'));
     if ((state?.papers.length ?? 0) > 1 || (state?.attempts.length ?? 0) > 1) {
-      const select = el('select', 'exam-history');
-      select.setAttribute('aria-label', '试卷与作答记录');
+      const history = el('details', 'exam-history');
+      const summary = el('summary', '', '历史');
+      summary.prepend(icon('history'));
+      summary.setAttribute('aria-label', '试卷与作答记录');
+      history.append(summary);
+      const list = el('div', 'exam-history-list');
       for (const paper of state.papers) {
         const attempts = state.attempts.filter((a) => a.paperId === paper.id);
         for (const item of attempts.length ? attempts : [null]) {
-          const option = el(
-            'option',
-            '',
-            `${paper.title}${item ? ` · ${new Date(item.startedAt).toLocaleString()}${item.status === 'answering' ? ' · 作答中' : ''}` : ' · 待开考'}`,
-          );
-          option.value = JSON.stringify({
-            paperId: paper.id,
-            ...(item ? { attemptId: item.id } : {}),
-          });
-          option.selected =
+          const selected =
             paper.id === state.paper?.id && (item?.id ?? null) === (state.attempt?.id ?? null);
-          select.append(option);
+          const choice = button(
+            `${paper.title}${item ? ` · ${new Date(item.startedAt).toLocaleString()}${item.status === 'answering' ? ' · 作答中' : ''}` : ' · 待开考'}`,
+            async () => {
+              try {
+                await flush();
+                selection = { paperId: paper.id, ...(item ? { attemptId: item.id } : {}) };
+                history.open = false;
+                await refresh();
+              } catch {
+                showNotice('请先完成当前答案保存，再切换试卷。');
+              }
+            },
+          );
+          choice.setAttribute('aria-current', String(selected));
+          list.append(choice);
         }
       }
-      select.addEventListener('change', async () => {
-        try {
-          await flush();
-          selection = JSON.parse(select.value);
-          await refresh();
-        } catch {
-          showNotice('请先完成当前答案保存，再切换试卷。');
-        }
-      });
-      titleRow.append(select);
+      history.append(list);
+      header.append(history);
     }
     header.append(titleRow);
     if (state?.paper)
@@ -378,24 +410,35 @@ export function mount(container, context) {
     header.append(noticeNode);
     root.append(header);
     const content = el('div', 'exam-content');
-    root.append(content);
+    const body = el('div', 'exam-body');
+    body.append(content);
+    root.append(body);
     if (!state?.paper) {
-      renderSetup(content);
+      const stage = el('div', 'exam-stage exam-welcome');
+      content.append(stage);
+      renderSetup(stage);
       return;
     }
     if (state.paper.status !== 'ready') {
-      renderPreparing(content);
+      const stage = el('div', 'exam-stage');
+      content.append(stage);
+      renderPreparing(stage);
       return;
     }
     if (!state.attempt) {
-      content.append(
+      const stage = el('div', 'exam-stage exam-ready');
+      content.append(stage);
+      const symbol = el('div', 'exam-stage-symbol');
+      symbol.append(icon('check'));
+      stage.append(symbol);
+      stage.append(
         el('h3', '', '试卷已准备好'),
         el('p', 'exam-description', '整卷已完成复核。点击开始后计时，离开面板或关闭应用不会暂停。'),
       );
       const topics = el('ul', 'exam-topics');
       for (const topic of [...new Set(state.paper.topics)]) topics.append(el('li', '', topic));
-      content.append(topics);
-      renderPlan(content);
+      stage.append(topics);
+      renderPlan(stage);
       const start = button(
         '开始考试',
         async () => {
@@ -413,7 +456,7 @@ export function mount(container, context) {
         },
         'exam-primary',
       );
-      content.append(start);
+      stage.append(start);
       return;
     }
     const attempt = state.attempt;
@@ -427,20 +470,6 @@ export function mount(container, context) {
       savedLabel.setAttribute('role', 'status');
       status.append(clock, answerLabel, savedLabel);
       header.append(status);
-      const nav = el('details', 'exam-nav');
-      nav.append(el('summary', '', '答题卡 · 查看题号与标记'));
-      const grid = el('div', 'exam-number-grid');
-      for (const question of attempt.questions) {
-        const jump = button(question.id.slice(1), () =>
-          root
-            .querySelector(`[data-question="${question.id}"]`)
-            ?.scrollIntoView({ block: 'start', behavior: 'auto' }),
-        );
-        grid.append(jump);
-        navigation.set(question.id, jump);
-      }
-      nav.append(grid);
-      header.append(nav);
     } else {
       const result = el('div', 'exam-result');
       result.append(
@@ -489,6 +518,19 @@ export function mount(container, context) {
         );
       content.append(result);
     }
+    navigationHandle = mountNavigation({
+      root,
+      body,
+      content,
+      titleRow,
+      questions: attempt.questions,
+      view: navigationView,
+      el,
+      button,
+    });
+    navigation = navigationHandle.nodes;
+    if (attempt.status !== 'answering')
+      navigationHandle.legend.textContent = '✓ 正确 · − 未得分\n◐ 部分得分 · ? 待复核';
     const groups = sections(attempt.questions);
     for (const question of attempt.questions) {
       const group = groups.find((s) => s.start === question.id);
@@ -506,117 +548,76 @@ export function mount(container, context) {
     root.append(footer);
     renderFooter();
     syncMetadata();
+    content.scrollTop = scrollTop;
+    if (anchorKey) {
+      const restored = content.querySelector(`[data-read-anchor="${anchorKey}"]`);
+      if (restored)
+        content.scrollTop +=
+          restored.getBoundingClientRect().top - content.getBoundingClientRect().top - anchorOffset;
+    }
+    if (focusedNav) navigation.get(focusedNav)?.focus({ preventScroll: true });
+    else if (focusedQuestion && focusedSummary)
+      content
+        .querySelector(`[data-question="${focusedQuestion}"] summary`)
+        ?.focus({ preventScroll: true });
+  }
+  function insertExamPrompt() {
+    if (typeof context.insertPrompt !== 'function') {
+      showNotice('请更新 LimeA 主程序，以使用输入框试卷提示。');
+      return;
+    }
+    const accepted = context.insertPrompt({
+      label: '试卷',
+      content:
+        '请根据当前学习进度，使用学习试卷插件制作一份计时模拟试卷，不使用抽查工具。优先遵从我补充的范围、题量、时长、难度和题型；未指定时默认10题、30分钟、适中难度。先确定题型与分值，逐题编写，整卷审核后再让我开始考试。若学习依据不足，先向我确认。',
+    });
+    showNotice(
+      accepted ? '已放入输入框，补充要求后发送。' : '未能加入输入框，请检查当前草稿或稍后重试。',
+    );
   }
   function renderSetup(content) {
+    const symbol = el('div', 'exam-stage-symbol');
+    symbol.append(icon('paper'));
     content.append(
-      el('h3', '', '把学过的内容，变成一次考试'),
-      el('p', 'exam-description', '先定题型与分值，按固定模板逐题出卷，整卷审核后再开始计时。'),
+      symbol,
+      el('h3', '', '把学过的，认真考一次'),
+      el('p', 'exam-description', '在对话中说明考试范围与要求。试卷准备好后，在这里专心作答。'),
     );
-    const fields = el('div', 'exam-setup');
-    const count = el('input');
-    count.type = 'number';
-    count.min = '3';
-    count.max = '20';
-    count.value = '10';
-    count.required = true;
-    const duration = el('input');
-    duration.type = 'number';
-    duration.min = '5';
-    duration.max = '180';
-    duration.value = '30';
-    duration.required = true;
-    const difficulty = el('select');
-    for (const item of ['基础', '适中', '进阶']) difficulty.append(el('option', '', item));
-    difficulty.value = '适中';
-    const range = el('textarea');
-    range.rows = 3;
-    range.maxLength = 3000;
-    range.placeholder = '例如：刚学完的一元二次方程，重点检查应用题';
-    for (const [name, input] of [
-      ['题数', count],
-      ['考试时长（分钟）', duration],
-      ['难度', difficulty],
-      ['补充考试范围（可选）', range],
-    ]) {
-      const label = el('label', 'exam-field');
-      label.append(el('span', '', name), input);
-      fields.append(label);
-    }
-    content.append(fields);
-    const allocation = el('details', 'exam-scope');
-    allocation.append(el('summary', '', '题型分配 · 默认自动规划'));
-    const custom = el('input');
-    custom.type = 'checkbox';
-    const customLabel = el('label', 'exam-option');
-    customLabel.append(custom, el('span', '', '指定每种题型的数量'));
-    allocation.append(customLabel);
-    const typeFields = el('div', 'exam-type-counts');
-    const counts = new Map();
-    for (const [type, name] of Object.entries(typeNames)) {
-      const label = el('label', 'exam-field');
-      const input = el('input');
-      input.type = 'number';
-      input.min = '0';
-      input.max = '20';
-      input.step = '1';
-      input.value = '2';
-      input.required = true;
-      input.disabled = true;
-      label.append(el('span', '', `${name}题数量`), input);
-      typeFields.append(label);
-      counts.set(type, input);
-    }
-    custom.addEventListener('change', () => {
-      for (const input of counts.values()) input.disabled = !custom.checked;
-    });
-    allocation.append(
-      typeFields,
-      el(
-        'p',
-        'exam-meta',
-        '数量合计应等于题数。版式固定按题型分节，填空逐空作答，解答题填写过程。',
-      ),
-    );
-    content.append(allocation);
-    const create = button(
-      '根据学习进度出卷',
-      () => {
-        if (!count.reportValidity() || !duration.reportValidity()) return;
-        let types = '';
-        if (custom.checked) {
-          if ([...counts.values()].some((input) => !input.reportValidity())) return;
-          if (
-            [...counts.values()].reduce((n, input) => n + Number(input.value), 0) !==
-            Number(count.value)
-          ) {
-            showNotice('各题型数量之和必须等于题数。');
-            return;
-          }
-          types = `题型数量固定为：${[...counts].map(([type, input]) => `${typeNames[type]}${input.value}题`).join('、')}。`;
-        }
-        void model(
-          'prepare',
-          `请根据当前学习进度，制作一份${count.value}题、${duration.value}分钟、${difficulty.value}难度的模拟试卷。${types}${range.value ? `补充范围：${range.value}。` : ''}请先确定结构，逐题生成，整卷审核一次后再让我开始考试；学习依据不足时先向我确认。`,
-        );
-      },
-      'exam-primary',
-    );
-    create.dataset.modelAction = '';
-    content.append(create);
+    const create = button('试卷', insertExamPrompt, 'exam-primary exam-create');
+    create.prepend(icon('paper'));
+    create.dataset.draftAction = '';
+    content.append(create, el('p', 'exam-meta', '加入输入框 · 补充要求后发送'));
     syncMetadata();
   }
   function renderPlan(content) {
     if (!state.paper.sections?.length) return;
     const plan = el('div', 'exam-plan');
-    plan.append(el('p', 'exam-meta', '试卷结构 · 按题型分节'));
-    for (const section of state.paper.sections)
-      plan.append(
-        el('p', '', `${typeNames[section.type]} ${section.count} 题 · ${section.points} 分`),
+    plan.append(el('p', 'exam-eyebrow', '试卷结构'));
+    for (const section of state.paper.sections) {
+      const row = el('div', 'exam-plan-row');
+      row.append(
+        el('span', '', `${typeNames[section.type]}题`),
+        el('span', 'exam-meta', `${section.count} 题`),
+        el('span', '', `${section.points} 分`),
       );
+      plan.append(row);
+    }
     content.append(plan);
   }
   function renderPreparing(content) {
     const p = state.paper;
+    const stage = p.phase === 'blueprint' ? 0 : p.generated < p.questionCount ? 1 : 2;
+    const steps = el('ol', 'exam-steps');
+    for (const [index, label] of ['规划结构', '编写题目', '整卷审核'].entries()) {
+      const item = el('li');
+      item.dataset.state = index < stage ? 'done' : index === stage ? 'current' : 'pending';
+      if (index === stage) item.setAttribute('aria-current', 'step');
+      const marker = el('span', 'exam-step-marker', index < stage ? '' : String(index + 1));
+      if (index < stage) marker.append(icon('check'));
+      item.append(marker, el('span', '', label));
+      steps.append(item);
+    }
+    content.append(steps);
     content.append(
       el('h3', '', p.status === 'paused' ? '出卷已暂停' : (phaseNames[p.phase] ?? '正在准备试卷')),
       el('p', 'exam-progress', `已生成 ${p.generated} / ${p.questionCount} 题`),
@@ -677,11 +678,12 @@ export function mount(container, context) {
   function renderQuestion(content, q, attempt) {
     const article = el('article', 'exam-question');
     article.dataset.question = q.id;
+    article.dataset.readAnchor = q.id;
     const heading = el('div', 'exam-question-heading');
-    heading.append(
-      el('h3', '', `${q.id.slice(1)}. ${typeNames[q.type]}`),
-      el('span', 'exam-meta', `${q.points} 分`),
-    );
+    const title = el('h3', '', `${q.id.slice(1)}. ${typeNames[q.type]}`);
+    title.tabIndex = -1;
+    heading.dataset.readAnchor = `${q.id}-heading`;
+    heading.append(title, el('span', 'exam-meta', `${q.points} 分`));
     if (attempt.status === 'answering') {
       const mark = button(
         marked.includes(q.id) ? '已标记' : '标记待检查',
@@ -794,6 +796,14 @@ export function mount(container, context) {
         article.append(verdict, math(grade.explanation));
       }
       const details = el('details', 'exam-explanation');
+      details.dataset.readAnchor = `${q.id}-reference`;
+      details.open = expanded.has(q.id);
+      details.addEventListener('toggle', () => {
+        if (details.isConnected) {
+          if (details.open) expanded.add(q.id);
+          else expanded.delete(q.id);
+        }
+      });
       details.append(
         el('summary', '', '参考答案与解析'),
         math(
@@ -812,6 +822,14 @@ export function mount(container, context) {
           `请结合我的作答，讲解《${state.paper.title}》第${q.id.slice(1)}题的解题过程和失分原因。作答编号：${attempt.id}，题号：${q.id}`,
         ),
       );
+    }
+    let proseIndex = 0;
+    for (const node of article.children) {
+      if (
+        node.classList.contains('exam-prose') &&
+        !node.previousElementSibling?.classList.contains('exam-verdict')
+      )
+        node.dataset.readAnchor = `${q.id}-prose-${proseIndex++}`;
     }
     content.append(article);
   }
@@ -883,15 +901,7 @@ export function mount(container, context) {
           }
         }),
       );
-      footer.append(
-        button('制作新试卷', () => {
-          state = null;
-          selection = {};
-          setupMode = true;
-          layoutKey = '';
-          render();
-        }),
-      );
+      footer.append(button('制作新试卷', insertExamPrompt));
     }
   }
   const unsubscribeVisibility = context.onVisibilityChange((value) => {
@@ -909,6 +919,7 @@ export function mount(container, context) {
   const tick = setInterval(syncMetadata, 250);
   return () => {
     disposed = true;
+    navigationHandle?.cleanup();
     clearInterval(poll);
     clearInterval(tick);
     unsubscribeVisibility();

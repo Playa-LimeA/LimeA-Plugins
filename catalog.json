@@ -135,9 +135,9 @@
     {
       "id": "learn.exam",
       "name": "学习试卷",
-      "description": "先定题型与分值，逐题出卷，整卷审核后在 Learn 模式右侧计时作答。支持单选、多选、判断、填空、解答题；自动保存、到时交卷、批改与考后讲解。正常5题仅需7次出卷模型请求，实质问题定向修订，中断可继续。需要插件接口版本13及支持工具调用的模型。",
+      "description": "先定题型与分值，逐题出卷，整卷审核后在 Learn 模式右侧计时作答。支持单选、多选、判断、填空、解答题；自动保存、到时交卷、批改与考后讲解。支持输入框紧凑试卷提示、右侧题号导航及宽窄自适应。紧凑提示需新版主程序，旧版可直接对话出卷。需要插件接口版本13及支持工具调用的模型。",
       "author": "Playa",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "hostVersion": ">=0.1.0 <1.0.0",
       "category": "efficiency",
       "tier": "official",
@@ -145,10 +145,10 @@
         "fs:plugin-data",
         "model:private-task"
       ],
-      "archive": "plugins/learn.exam/0.1.1.zip",
-      "sha256": "c64b3097cf49c64991e356fd176f289c59b71c5b76ee3f1e83c14c7babeee9c5",
+      "archive": "plugins/learn.exam/0.2.0.zip",
+      "sha256": "a98d449e6c5ffa25e517810a0f1535ce4a0ad9a423eca89728565f9f68baa8a5",
       "icon": {
-        "path": "icons/learn.exam/0.1.1.png",
+        "path": "icons/learn.exam/0.2.0.png",
         "sha256": "87ddb4ccaf32ab3489282894b21aeeee38725ac8af3e63e08395a11127c98072"
       }
     }

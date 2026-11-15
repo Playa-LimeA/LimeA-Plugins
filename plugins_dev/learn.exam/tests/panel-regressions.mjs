@@ -195,7 +195,8 @@ export async function panelRegressions(page, sessionId) {
   });
   await panel.getByRole('button', { name: '再做一次', exact: true }).waitFor();
   const history = panel.getByLabel('试卷与作答记录');
-  await history.evaluate((node) => node.dispatchEvent(new Event('change', { bubbles: true })));
+  await history.click();
+  await panel.locator('.exam-history-list button[aria-current=true]').click();
   await panel.getByRole('button', { name: '再做一次', exact: true }).click();
   await panel.locator('time').waitFor();
   assert.equal(await panel.getAttribute('data-status'), 'answering', '丢失开始回执后转到新作答');
@@ -221,6 +222,42 @@ export async function panelRegressions(page, sessionId) {
   await panel.getByLabel('第4题第2空', { exact: true }).waitFor();
   assert.equal(await panel.getByLabel('第4题第1空', { exact: true }).inputValue(), '第一空');
   assert.equal(await panel.getByLabel('第4题第2空', { exact: true }).inputValue(), '第二空');
+  // Legacy papers may interleave question types; navigation must list each exactly once.
+  await page.evaluate(() => {
+    const f = window.__examFixture;
+    f.unmount();
+    const snapshot = structuredClone(f.base);
+    snapshot.attempt.status = 'grading';
+    snapshot.attempt.grades = {};
+    snapshot.attempt.questions.push({ ...snapshot.attempt.questions[0], id: 'q6' });
+    f.current = snapshot.attempt.id;
+    f.snapshots.set(f.current, snapshot);
+    f.mount();
+  });
+  await panel.locator('[data-question=q6]').waitFor();
+  assert.equal(await panel.locator('.exam-number-grid button').count(), 6);
+  assert.equal(await panel.locator('[data-nav-question=q1]').count(), 1);
+  await panel.getByRole('button', { name: '答题卡', exact: true }).click();
+  await panel.locator('[data-nav-question=q5]').click();
+  await panel.locator('[data-question=q5] summary').click();
+  const beforeReading = await panel
+    .locator('[data-question=q5] h3')
+    .evaluate((n) => n.getBoundingClientRect().top);
+  await page.evaluate(() => {
+    const f = window.__examFixture;
+    f.snapshots.get(f.current).attempt.grades.q1 = {
+      verdict: 'correct',
+      score: 20,
+      explanation: '前一题新增的详细评分依据。'.repeat(120),
+    };
+  });
+  await panel.locator('[data-question=q1] .exam-verdict').waitFor();
+  const afterReading = await panel
+    .locator('[data-question=q5] h3')
+    .evaluate((n) => n.getBoundingClientRect().top);
+  assert.ok(Math.abs(afterReading - beforeReading) < 2, '前面题目变高后保留当前阅读锚点');
+  assert.equal(await panel.locator('[data-question=q5] details').getAttribute('open'), '');
+
   await page.evaluate(() => {
     const f = window.__examFixture;
     f.unmount();
@@ -228,6 +265,6 @@ export async function panelRegressions(page, sessionId) {
     delete window.__examFixture;
   });
   console.log(
-    '面板回归通过：连续编辑后卸载、重试核对期间继续输入、丢失重考回执、填空连续输入卸载。',
+    '面板回归通过：连续编辑后卸载、重试核对期间继续输入、丢失重考回执、填空连续输入卸载、旧卷题型交错导航、增量批改阅读位置。',
   );
 }
