@@ -137,7 +137,7 @@
       "name": "学习试卷",
       "description": "先定题型与分值，逐题出卷，整卷审核后在 Learn 模式右侧计时作答。支持单选、多选、判断、填空、解答题；自动保存、到时交卷、批改与考后讲解。支持输入框紧凑试卷提示、右侧题号导航及宽窄自适应。紧凑提示需新版主程序，旧版可直接对话出卷。需要插件接口版本13及支持工具调用的模型。",
       "author": "Playa",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "hostVersion": ">=0.1.0 <1.0.0",
       "category": "efficiency",
       "tier": "official",
@@ -145,10 +145,10 @@
         "fs:plugin-data",
         "model:private-task"
       ],
-      "archive": "plugins/learn.exam/0.2.1.zip",
-      "sha256": "02e7b2aeb756ec3b88f6a84010fca43c62c0ba459632fc1603dc6069f7cb6ce8",
+      "archive": "plugins/learn.exam/0.2.2.zip",
+      "sha256": "932c98853c76b46fd21a927e0aa471c0aadd042a69032707148c36f394aa9a90",
       "icon": {
-        "path": "icons/learn.exam/0.2.1.png",
+        "path": "icons/learn.exam/0.2.2.png",
         "sha256": "87ddb4ccaf32ab3489282894b21aeeee38725ac8af3e63e08395a11127c98072"
       }
     }

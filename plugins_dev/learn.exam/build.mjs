@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { jsonSchema, prepareSchema, gradeInputSchema, reviewInputSchema } from './src/schemas.mjs';
 process.chdir(fileURLToPath(new URL('.', import.meta.url)));
 await mkdir('dist/assets/fonts', { recursive: true });
-for (const name of ['backend', 'panel'])
+for (const name of ['backend', 'panel', 'page'])
   await build({
     entryPoints: [`src/${name}.mjs`],
     outfile: `dist/${name}.mjs`,
@@ -21,12 +21,19 @@ for (const font of fonts)
 const manifest = {
   id: 'learn.exam',
   name: '学习试卷',
-  version: '0.2.1',
+  version: '0.2.2',
   apiVersion: 13,
   hostVersion: '>=0.1.0 <1.0.0',
   entry: 'backend.mjs',
   permissions: ['fs:plugin-data', 'model:private-task'],
   resources: ['assets/katex.min.css', ...fonts.map((f) => `assets/fonts/${f}`)],
+  page: {
+    entry: 'page.mjs',
+    description:
+      '把学过的内容，变成一次计时模拟考试。先规划题型与分值，逐题编写并整卷审核，再在学习模式右侧专心作答；交卷后查看评分、解析并回到对话讲解。',
+    author: 'Playa',
+    illustration: 'assets/banner.png',
+  },
   panels: [
     {
       id: 'learn.exam.paper',
@@ -70,6 +77,7 @@ const manifest = {
 await writeFile('dist/limea.plugin.json', JSON.stringify(manifest, null, 2) + '\n');
 for (const file of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) await cp(file, `dist/${file}`);
 await cp('assets/icon.png', 'dist/icon.png');
+await cp('assets/banner.png', 'dist/assets/banner.png');
 await writeFile('dist/KATEX-LICENSE', await readFile('node_modules/katex/LICENSE'));
 await writeFile('dist/ZOD-LICENSE', await readFile('node_modules/zod/LICENSE'));
 console.log('构建完成：导入 plugins_dev/learn.exam/dist（需要接口版本13）。');
