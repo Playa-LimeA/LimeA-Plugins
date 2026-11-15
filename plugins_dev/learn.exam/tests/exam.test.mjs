@@ -6,6 +6,7 @@ import { publicResult, validateBlueprint, validateQuestion } from '../src/schema
 import { createModelTasks } from '../src/model-tasks.mjs';
 import { createRepository } from '../src/repository.mjs';
 import { createExam } from '../src/exam.mjs';
+import { reviewData } from '../src/review-document.mjs';
 
 test('完整出卷、答案隔离、提交、程序判分与主观评分', async (t) => {
   const f = await fixture(t),
@@ -32,8 +33,9 @@ test('完整出卷、答案隔离、提交、程序判分与主观评分', async
   assert.equal(result.score, 100);
   assert.equal(result.status, 'graded');
   assert.equal(f.calls.filter((c) => c.phase === 'grade').length, 1);
-  assert.ok(
-    f.calls.every((c) => c.phase !== 'solve' || !JSON.stringify(c.data).includes('PRIVATE-ANSWER')),
+  assert.equal(
+    f.calls.some((c) => ['solve', 'audit'].includes(c.phase)),
+    false,
   );
   const detail = await f.service.review(
     { attemptId: state.attempt.id, questionId: 'q1' },
@@ -179,7 +181,7 @@ test('跨会话对象拒绝；每会话最多一份活动作答', async (t) => {
   assert.equal(second.status, 'ready');
 });
 
-test('暂停丢弃迟到结果，主动继续保留已审核题', async (t) => {
+test('暂停丢弃迟到结果，主动继续保留已生成题', async (t) => {
   let release,
     gateReached = false,
     gated = false;
@@ -197,11 +199,12 @@ test('暂停丢弃迟到结果，主动继续保留已审核题', async (t) => {
   const work = f.service.prepare({ action: 'create', spec }, f.context());
   await until(() => gateReached);
   const s = await f.load();
-  assert.equal(s.paper.approved, 1);
+  assert.equal(s.paper.generated, 1);
+  assert.equal(s.paper.approved, 0);
   await f.action('pause', { paperId: s.paper.id });
   release();
   await work;
-  assert.equal((await f.load()).paper.approved, 1);
+  assert.equal((await f.load()).paper.generated, 1);
   assert.equal(
     (await f.service.prepare({ action: 'resume', paperId: s.paper.id }, f.context())).status,
     'ready',
@@ -213,29 +216,51 @@ test('暂停丢弃迟到结果，主动继续保留已审核题', async (t) => {
   );
 });
 
-test('整卷审核返工仅针对指定题并重新审核整卷', async (t) => {
+test('整卷审核返工仅针对指定题并复核修改', async (t) => {
   let checks = 0;
   const f = await fixture(t, ({ phase, data }) =>
     phase === 'whole' && checks++ === 0
-      ? { verdict: 'revise', questionIds: ['q2'], reason: 'q2与前题提示重复，请调整。' }
+      ? {
+          issues: [
+            {
+              severity: 'blocking',
+              category: 'duplicate',
+              questionIds: ['q2'],
+              reason: 'q2与前题重复，请调整。',
+            },
+          ],
+        }
       : responseFor(phase, data),
   );
   assert.equal((await f.prepare()).paper.status, 'ready');
-  assert.equal(f.calls.filter((c) => c.phase === 'question' && c.data.slot.id === 'q2').length, 2);
+  assert.equal(f.calls.filter((c) => c.phase === 'repair' && c.data.slot.id === 'q2').length, 1);
   assert.equal(f.calls.filter((c) => c.phase === 'question' && c.data.slot.id === 'q1').length, 1);
-  assert.equal(checks, 2);
+  assert.equal(checks, 1);
+  assert.equal(f.calls.filter((c) => c.phase === 'verify').length, 1);
 });
 
 test('审核不确定经过有界修订后暂停，不发布有争议试卷', async (t) => {
   const f = await fixture(t, ({ phase, data }) =>
-    phase === 'audit'
-      ? { verdict: 'uncertain', reason: '缺少足够依据。' }
+    ['whole', 'verify'].includes(phase)
+      ? {
+          issues: [
+            {
+              severity: 'advice',
+              category: 'uncertainty',
+              questionIds: ['q1'],
+              reason: '缺少足够依据。PRIVATE-ANSWER',
+            },
+          ],
+        }
       : responseFor(phase, data),
   );
   const s = await f.prepare();
   assert.equal(s.paper.status, 'paused');
   assert.equal(s.paper.approved, 0);
   assert.equal(f.calls.filter((c) => c.phase === 'question').length, 3);
+  assert.equal(f.calls.filter((c) => c.phase === 'repair').length, 1);
+  assert.equal(s.paper.stage, 'blocked');
+  assert.equal(JSON.stringify(s).includes('PRIVATE-ANSWER'), false);
   await assert.rejects(f.action('start', { paperId: s.paper.id }), /paper-not-ready/);
 });
 
@@ -309,8 +334,8 @@ test('最大题量与中文预算在请求前校验', () => {
     questions = {};
   for (const slot of blueprint.slots)
     questions[slot.id] = validateQuestion(responseFor('question', { slot }), slot);
-  assert.ok(prompt('whole', { spec: spec20, blueprint, questions }).length <= 58000);
-  assert.throws(() => prompt('whole', { content: '中'.repeat(58000) }), /prompt-too-long/);
+  assert.ok(prompt('whole', reviewData({ spec: spec20, blueprint, questions })).length <= 58000);
+  assert.throws(() => prompt('whole', { document: '中'.repeat(58000) }), /prompt-too-long/);
   assert.throws(() => publicResult({ content: '中'.repeat(9000) }), /public-result-limit/);
 });
 

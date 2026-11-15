@@ -310,6 +310,27 @@
 .exam-progress {
   font-variant-numeric: tabular-nums;
 }
+.exam-type-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.exam-plan {
+  margin: 20px 0;
+}
+.exam-plan p {
+  margin: 3px 0;
+}
+.exam .exam-section-title {
+  margin: 0 0 20px;
+}
+.exam-blank {
+  margin: 12px 0;
+}
+.exam-issues {
+  padding-left: 20px;
+}
 .exam-sr-only {
   position: absolute;
   width: 1px;

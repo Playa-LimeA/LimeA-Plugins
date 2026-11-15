@@ -134,7 +134,7 @@ export async function panelRegressions(page, sessionId) {
     data.mount();
   }, sessionId);
   const panel = page.locator('.exam-fixture .exam');
-  const answer = () => panel.getByLabel('第3题作答', { exact: true });
+  const answer = () => panel.getByLabel('第5题作答', { exact: true });
   await answer().waitFor();
   await answer().fill('第一段');
   await answer().fill('连续输入的第二段');
@@ -178,7 +178,7 @@ export async function panelRegressions(page, sessionId) {
     await panel.getByRole('button', { name: '重试保存', exact: true }).click();
   await page.waitForFunction(() => {
     const f = window.__examFixture;
-    return f.snapshots.get(f.current).attempt.answers.q3 === '核对期间输入的新内容';
+    return f.snapshots.get(f.current).attempt.answers.q5 === '核对期间输入的新内容';
   });
   assert.equal(await answer().inputValue(), '核对期间输入的新内容');
 
@@ -200,11 +200,34 @@ export async function panelRegressions(page, sessionId) {
   await panel.locator('time').waitFor();
   assert.equal(await panel.getAttribute('data-status'), 'answering', '丢失开始回执后转到新作答');
   assert.equal(await answer().inputValue(), '');
+  // Each fill edit must reach the host before an immediate unmount as well.
+  await page.evaluate(() => {
+    const f = window.__examFixture;
+    f.mode = 'delayed-save';
+    f.gate = new Promise((resolve) => {
+      f.release = resolve;
+    });
+  });
+  await panel.getByLabel('第4题第1空', { exact: true }).fill('第一空');
+  await panel.getByLabel('第4题第2空', { exact: true }).fill('第二空');
+  await page.evaluate(async () => {
+    const f = window.__examFixture;
+    f.unmount();
+    f.release();
+    await Promise.all(f.pending);
+    f.mode = 'normal';
+    f.mount();
+  });
+  await panel.getByLabel('第4题第2空', { exact: true }).waitFor();
+  assert.equal(await panel.getByLabel('第4题第1空', { exact: true }).inputValue(), '第一空');
+  assert.equal(await panel.getByLabel('第4题第2空', { exact: true }).inputValue(), '第二空');
   await page.evaluate(() => {
     const f = window.__examFixture;
     f.unmount();
     f.host.remove();
     delete window.__examFixture;
   });
-  console.log('面板回归通过：连续编辑后卸载、重试核对期间继续输入、丢失重考回执。');
+  console.log(
+    '面板回归通过：连续编辑后卸载、重试核对期间继续输入、丢失重考回执、填空连续输入卸载。',
+  );
 }

@@ -1,4 +1,5 @@
 import { sameOptions, answered, scoreSchema } from './schemas.mjs';
+import { gradeFill } from './fill-grading.mjs';
 export async function gradeAttempt(repo, task, step) {
   let attempt = await repo.get('attempt', task.id);
   const paper = await repo.get('paper', attempt.paperId);
@@ -8,7 +9,9 @@ export async function gradeAttempt(repo, task, step) {
     if (attempt.grades[slot.id]) continue;
     const answer = attempt.answers[slot.id],
       question = paper.questions[slot.id];
-    if (!answered(answer) || slot.type !== 'short') {
+    if (slot.type === 'fill') {
+      await gradeFill(repo, task, step, slot, question, answer);
+    } else if (!answered(answer) || slot.type !== 'short') {
       const correct = answered(answer) && sameOptions(answer, question.correctOptions);
       await repo.serial(async () => {
         task.signal.throwIfAborted();

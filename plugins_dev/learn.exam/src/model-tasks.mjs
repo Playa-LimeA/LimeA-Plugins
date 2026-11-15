@@ -167,6 +167,7 @@ function publicError(error) {
     'content-limit',
     'invalid-model-result',
     'question-review-failed',
+    'question-format-failed',
     'paper-review-failed',
     'invalid-score',
   ];

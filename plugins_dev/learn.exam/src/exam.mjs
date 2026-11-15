@@ -7,13 +7,14 @@ import { gradeAttempt } from './grading.mjs';
 import {
   id,
   scopeSchema,
-  specSchema,
+  validateSpec,
   prepareSchema,
   gradeInputSchema,
   reviewInputSchema,
   normalizeAnswers,
   publicResult,
 } from './schemas.mjs';
+import { sections } from './question-types.mjs';
 export { migrations };
 
 const actionSchema = scopeSchema
@@ -44,7 +45,15 @@ function summary(p) {
     questionCount: p.spec.questionCount,
     durationMinutes: p.spec.durationMinutes,
     difficulty: p.spec.difficulty,
-    approved: Object.keys(p.questions).length,
+    generated: Object.keys(p.questions).length,
+    approved: p.status === 'ready' ? Object.keys(p.questions).length : 0,
+    stage: p.generation?.stage ?? null,
+    repairsRemaining: p.generation?.pending.length ?? 0,
+    sections: sections(p.blueprint?.slots ?? []),
+    issues: (p.generation?.issues ?? [])
+      .filter((i) => i.severity === 'blocking')
+      .map(({ questionIds, category }) => ({ questionIds, category })),
+    formatQuestion: p.generation?.formatBlocked ?? null,
     phase: p.phase,
     error: p.error,
     createdAt: p.createdAt,
@@ -147,12 +156,16 @@ export async function createExam(db, { now = Date.now, sweepInterval = 1000 } = 
             ...slot,
             stem: q.stem,
             options: q.options,
+            ...(q.blanks?.length
+              ? { blanks: q.blanks.map(({ id, points }) => ({ id, points })) }
+              : {}),
             ...(attempt.status !== 'answering'
               ? {
                   correctOptions: q.correctOptions,
                   referenceAnswer: q.referenceAnswer,
                   rubric: q.rubric,
                   explanation: q.explanation,
+                  ...(q.blanks?.length ? { blanks: q.blanks } : {}),
                 }
               : {}),
           };
@@ -276,7 +289,7 @@ export async function createExam(db, { now = Date.now, sweepInterval = 1000 } = 
       if (prior) return { ...prior, repeated: true };
       let paper;
       if (input.action === 'create') {
-        const spec = specSchema.parse(input.spec);
+        const spec = validateSpec(input.spec);
         if ((await repo.list('attempt', context.sessionId)).some((a) => a.status === 'answering'))
           throw new Error('exam-already-active');
         if ((await repo.list('paper', context.sessionId)).some((p) => p.status === 'preparing'))

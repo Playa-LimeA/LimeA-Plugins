@@ -1,166 +1,169 @@
 import {
   blueprintSchema,
   questionSchema,
-  solutionSchema,
-  auditSchema,
   wholeAuditSchema,
   validateBlueprint,
   validateQuestion,
-  sameOptions,
+  validateAudit,
 } from './schemas.mjs';
+import { reviewData } from './review-document.mjs';
+
+const blockingIds = (issues) => [
+  ...new Set(issues.filter((i) => i.severity === 'blocking').flatMap((i) => i.questionIds)),
+];
+
+async function change(repo, task, apply) {
+  return repo.serial(async () => {
+    task.signal.throwIfAborted();
+    const p = await repo.get('paper', task.id);
+    if (p.operationId !== task.token) throw new Error('interrupted');
+    apply(p);
+    await repo.save('paper', p);
+  });
+}
 
 export async function generate(repo, task, step) {
+  await change(repo, task, (p) => {
+    if (!p.generation) {
+      // Upgrade unfinished papers only on explicit continuation; ready papers never enter here.
+      for (const slot of p.blueprint?.slots ?? []) {
+        const q = p.questions[slot.id] ?? p.candidates?.[slot.id];
+        if (!q) continue;
+        try {
+          p.questions[slot.id] = validateQuestion(q, slot);
+        } catch {
+          delete p.questions[slot.id];
+        }
+      }
+      p.candidates = {};
+      p.solutions = {};
+      p.rework = [];
+      p.audit = null;
+      p.generation = {
+        version: 2,
+        stage: 'draft',
+        pending: [],
+        changedIds: [],
+        issues: [],
+        invalidCounts: {},
+      };
+    }
+    const g = p.generation;
+    if (g.stage === 'blocked') {
+      g.stage = 'repair';
+      g.pending = blockingIds(g.issues);
+      g.changedIds = [...g.pending];
+      g.invalidCounts = {};
+    }
+    if (g.formatBlocked) {
+      delete g.invalidCounts[g.formatBlocked];
+      delete g.formatBlocked;
+    }
+  });
   let paper = await repo.get('paper', task.id);
   if (!paper.blueprint)
     await step('blueprint', paper.spec, blueprintSchema, (p, value) => {
       p.blueprint = validateBlueprint(value, p.spec);
     });
-  let wholeReworks = 0;
+
   for (;;) {
     task.signal.throwIfAborted();
     paper = await repo.get('paper', task.id);
-    // A failed whole-paper audit has a durable, explicit rework set.
-    if (paper.rework?.length) {
-      await repo.serial(async () => {
-        const p = await repo.get('paper', task.id);
-        for (const id of p.rework) {
-          delete p.questions[id];
-          delete p.candidates[id];
-          delete p.solutions[id];
-          p.feedback[id] = p.audit?.reason ?? '请重新审核并修改本题。';
-        }
-        p.rework = [];
-        await repo.save('paper', p);
-      });
-    }
-    paper = await repo.get('paper', task.id);
-    for (const slot of paper.blueprint.slots) {
-      paper = await repo.get('paper', task.id);
-      if (paper.questions[slot.id]) continue;
-      let approved = false;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        task.signal.throwIfAborted();
+    const stage = paper.generation.stage;
+    if (stage === 'draft' || stage === 'repair') {
+      const repair = stage === 'repair';
+      for (const slot of paper.blueprint.slots) {
         paper = await repo.get('paper', task.id);
-        if (!paper.candidates[slot.id]) {
+        if (repair ? !paper.generation.pending.includes(slot.id) : paper.questions[slot.id])
+          continue;
+        for (;;) {
+          paper = await repo.get('paper', task.id);
+          if ((paper.generation.invalidCounts[slot.id] ?? 0) >= 2) {
+            await change(repo, task, (p) => {
+              p.generation.formatBlocked = slot.id;
+            });
+            throw new Error('question-format-failed');
+          }
           try {
             await step(
-              'question',
-              { spec: paper.spec, slot, feedback: paper.feedback[slot.id] ?? null },
+              repair ? 'repair' : 'question',
+              {
+                spec: paper.spec,
+                blueprint: paper.blueprint,
+                slot,
+                existing: paper.blueprint.slots
+                  .filter((s) => s.id !== slot.id && paper.questions[s.id])
+                  .map((s) => ({
+                    id: s.id,
+                    topic: s.topic,
+                    stem: paper.questions[s.id].stem.slice(0, 200),
+                  })),
+                feedback: paper.feedback[slot.id] ?? null,
+                ...(repair
+                  ? {
+                      original: paper.questions[slot.id],
+                      issues: paper.generation.issues.filter(
+                        (i) => i.severity === 'blocking' && i.questionIds.includes(slot.id),
+                      ),
+                    }
+                  : {}),
+              },
               questionSchema,
               (p, value) => {
-                p.candidates[slot.id] = validateQuestion(value, slot);
-                delete p.solutions[slot.id];
+                p.questions[slot.id] = validateQuestion(value, slot);
+                delete p.feedback[slot.id];
+                if (repair)
+                  p.generation.pending = p.generation.pending.filter((id) => id !== slot.id);
               },
             );
+            break;
           } catch (error) {
             if (
+              task.signal.aborted ||
               !['invalid-question', 'question-too-long', 'invalid-model-result'].includes(
                 error.message,
               )
             )
               throw error;
-            await feedback(
-              repo,
-              task,
-              slot.id,
-              '题目结构无效或超过2200字符，请简化并满足字段约束。',
-            );
-            continue;
+            await change(repo, task, (p) => {
+              p.generation.invalidCounts[slot.id] = (p.generation.invalidCounts[slot.id] ?? 0) + 1;
+              p.feedback[slot.id] =
+                '结构不符合约束：检查题号、题型、选项与正确答案数量、填空标记/分值，并将完整内容压缩至2200字符内。';
+            });
           }
         }
-        paper = await repo.get('paper', task.id);
-        const candidate = paper.candidates[slot.id];
-        if (!paper.solutions[slot.id])
-          await step(
-            'solve',
-            { type: slot.type, stem: candidate.stem, options: candidate.options },
-            solutionSchema,
-            (p, value) => {
-              p.solutions[slot.id] = value;
-            },
-          );
-        paper = await repo.get('paper', task.id);
-        const solution = paper.solutions[slot.id];
-        if (
-          solution.verdict !== 'clear' ||
-          (slot.type !== 'short' &&
-            !sameOptions(solution.selectedOptions, candidate.correctOptions))
-        ) {
-          await feedback(
-            repo,
-            task,
-            slot.id,
-            `独立解题未通过：${solution.reason}；请修订题干、条件或答案。`,
-          );
-          continue;
-        }
-        const audit = await step(
-          'audit',
-          {
-            learningContext: paper.spec.learningContext,
-            slot,
-            candidate,
-            independentSolution: solution,
-          },
-          auditSchema,
-          (p, value) => {
-            p.reviews.push({ questionId: slot.id, ...value });
-            p.reviews = p.reviews.slice(-100);
-            if (value.verdict === 'pass') {
-              p.questions[slot.id] = p.candidates[slot.id];
-              delete p.candidates[slot.id];
-              delete p.solutions[slot.id];
-              delete p.feedback[slot.id];
-            } else {
-              p.feedback[slot.id] = value.reason;
-              delete p.candidates[slot.id];
-              delete p.solutions[slot.id];
-            }
-            return value;
-          },
-        );
-        if (audit.verdict === 'pass') {
-          approved = true;
-          break;
-        }
       }
-      if (!approved) throw new Error('question-review-failed');
+      await change(repo, task, (p) => {
+        p.generation.stage = repair ? 'verify' : 'review';
+      });
+      continue;
     }
-    paper = await repo.get('paper', task.id);
-    const audit = await step(
-      'whole',
-      { spec: paper.spec, blueprint: paper.blueprint, questions: paper.questions },
+    if (!['review', 'verify'].includes(stage)) throw new Error('invalid-generation-state');
+    const passed = await step(
+      stage === 'verify' ? 'verify' : 'whole',
+      reviewData(paper, stage === 'verify'),
       wholeAuditSchema,
       (p, value) => {
-        const ids = p.blueprint.slots.map((s) => s.id);
-        if (
-          value.questionIds.some((id) => !ids.includes(id)) ||
-          (value.verdict === 'pass' && value.questionIds.length)
-        )
-          throw new Error('invalid-model-result');
-        p.audit = value;
-        if (value.verdict === 'pass') {
+        const audit = validateAudit(value, p.blueprint.slots);
+        p.audit = audit;
+        p.generation.issues = audit.issues;
+        const ids = blockingIds(audit.issues);
+        if (!ids.length) {
           p.status = 'ready';
           p.readyAt = Date.now();
           p.operationId = null;
           p.error = null;
           p.phase = 'ready';
-        } else p.rework = value.questionIds.length ? [...new Set(value.questionIds)] : ids;
-        return value;
+        } else if (stage === 'review') {
+          p.generation.stage = 'repair';
+          p.generation.pending = ids;
+          p.generation.changedIds = ids;
+          p.generation.invalidCounts = {};
+        } else p.generation.stage = 'blocked';
+        return !ids.length;
       },
     );
-    if (audit.verdict === 'pass') return;
-    if (wholeReworks++ >= 1) throw new Error('paper-review-failed');
+    if (passed) return;
+    if (stage === 'verify') throw new Error('paper-review-failed');
   }
-}
-async function feedback(repo, task, id, reason) {
-  await repo.serial(async () => {
-    task.signal.throwIfAborted();
-    const p = await repo.get('paper', task.id);
-    if (p.operationId !== task.token) throw new Error('interrupted');
-    p.feedback[id] = reason;
-    delete p.candidates[id];
-    delete p.solutions[id];
-    await repo.save('paper', p);
-  });
 }

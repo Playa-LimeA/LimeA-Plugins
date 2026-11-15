@@ -1,5 +1,6 @@
 import renderMathInElement from 'katex/contrib/auto-render';
 import styles from './panel.css';
+import { typeNames, issueNames, sections } from './question-types.mjs';
 
 const phaseNames = {
   blueprint: '正在规划考点与题型',
@@ -7,11 +8,17 @@ const phaseNames = {
   solve: '正在独立解题核对',
   audit: '正在审核答案与评分标准',
   whole: '正在检查整张试卷',
-  grade: '正在批改简答题',
+  repair: '正在修订问题题目',
+  verify: '正在复核修订内容',
+  grade: '正在批改解答题',
+  'grade-fill': '正在批改填空题',
 };
 const errors = {
   interrupted: '任务已暂停，已完成的部分已保存。',
   'question-review-failed': '有题目未通过复核，继续时会修订该题。',
+  'question-format-failed': '题目格式仍未符合要求，已暂停。继续时只重试未完成的题目。',
+  'invalid-blueprint': '试卷结构未满足题数、题型、分值或时长要求，请继续规划。',
+  'invalid-model-result': '模型未返回有效的题目或审核结果，已保存现有进度。',
   'paper-review-failed': '整卷检查发现问题，继续时会返工相关题目。',
   'model-request-failed': '模型请求未完成，请检查模型连接后继续。',
   'invalid-score': '模型返回的分值不符合评分标准，请继续批改。',
@@ -22,7 +29,6 @@ const errors = {
   'task-busy': '这份试卷的任务仍在进行中。',
   'exam-already-active': '当前会话还有一份正在作答的试卷，请先完成它。',
 };
-const typeNames = { single: '单选', multiple: '多选', short: '简答' };
 const verdictNames = {
   correct: '正确',
   partial: '部分得分',
@@ -54,8 +60,8 @@ function math(text) {
   });
   return node;
 }
-const countAnswers = (answers) =>
-  Object.values(answers ?? {}).filter((a) => (Array.isArray(a) ? a.length : a.trim())).length;
+const hasAnswer = (a) => (Array.isArray(a) ? a.some((v) => v.trim()) : Boolean(a?.trim()));
+const countAnswers = (answers) => Object.values(answers ?? {}).filter(hasAnswer).length;
 const messageFor = (error) =>
   Object.entries(errors).find(([code]) => String(error?.message ?? error).includes(code))?.[1] ??
   '操作未确认，请检查连接后重试。';
@@ -115,9 +121,7 @@ export function mount(container, context) {
     if (answerLabel && state?.attempt)
       answerLabel.textContent = `${countAnswers(draft)} / ${state.attempt.questions.length} 题已答`;
     for (const [id, node] of navigation) {
-      node.dataset.answered = String(
-        Boolean(Array.isArray(draft[id]) ? draft[id].length : draft[id]?.trim()),
-      );
+      node.dataset.answered = String(hasAnswer(draft[id]));
       node.dataset.marked = String(marked.includes(id));
       node.setAttribute(
         'aria-label',
@@ -157,7 +161,7 @@ export function mount(container, context) {
         saveError = '';
       }
     }
-    const key = `${next.paper?.id}:${next.paper?.status}:${next.paper?.phase}:${next.paper?.approved}:${next.attempt?.id}:${next.attempt?.status}:${Object.keys(next.attempt?.grades ?? {}).length}`;
+    const key = `${next.paper?.id}:${next.paper?.status}:${next.paper?.phase}:${next.paper?.generated}:${next.paper?.repairsRemaining}:${next.attempt?.id}:${next.attempt?.status}:${Object.keys(next.attempt?.grades ?? {}).length}`;
     if (layoutKey !== key) {
       layoutKey = key;
       confirming = false;
@@ -165,9 +169,12 @@ export function mount(container, context) {
     } else if (!dirty && !writes.size)
       for (const [id, fields] of controls) {
         for (const input of fields) {
-          if (input.tagName === 'TEXTAREA') {
+          if (input.tagName === 'TEXTAREA' || input.type === 'text') {
             if (document.activeElement !== input && input.getRootNode().activeElement !== input)
-              input.value = draft[id] ?? '';
+              input.value =
+                input.dataset.blankIndex === undefined
+                  ? (draft[id] ?? '')
+                  : (draft[id]?.[Number(input.dataset.blankIndex)] ?? '');
           } else input.checked = (draft[id] ?? []).includes(input.value);
         }
       }
@@ -388,6 +395,7 @@ export function mount(container, context) {
       const topics = el('ul', 'exam-topics');
       for (const topic of [...new Set(state.paper.topics)]) topics.append(el('li', '', topic));
       content.append(topics);
+      renderPlan(content);
       const start = button(
         '开始考试',
         async () => {
@@ -481,7 +489,19 @@ export function mount(container, context) {
         );
       content.append(result);
     }
-    for (const question of attempt.questions) renderQuestion(content, question, attempt);
+    const groups = sections(attempt.questions);
+    for (const question of attempt.questions) {
+      const group = groups.find((s) => s.start === question.id);
+      if (group)
+        content.append(
+          el(
+            'h3',
+            'exam-section-title',
+            `${typeNames[group.type]}题 · ${group.count} 题 · ${group.points} 分`,
+          ),
+        );
+      renderQuestion(content, question, attempt);
+    }
     footer = el('footer', 'exam-footer');
     root.append(footer);
     renderFooter();
@@ -490,11 +510,7 @@ export function mount(container, context) {
   function renderSetup(content) {
     content.append(
       el('h3', '', '把学过的内容，变成一次考试'),
-      el(
-        'p',
-        'exam-description',
-        '根据当前学习进度逐题出卷，独立复核后再开始计时。考试前不展示题目与答案。',
-      ),
+      el('p', 'exam-description', '先定题型与分值，按固定模板逐题出卷，整卷审核后再开始计时。'),
     );
     const fields = el('div', 'exam-setup');
     const count = el('input');
@@ -502,11 +518,13 @@ export function mount(container, context) {
     count.min = '3';
     count.max = '20';
     count.value = '10';
+    count.required = true;
     const duration = el('input');
     duration.type = 'number';
     duration.min = '5';
     duration.max = '180';
     duration.value = '30';
+    duration.required = true;
     const difficulty = el('select');
     for (const item of ['基础', '适中', '进阶']) difficulty.append(el('option', '', item));
     difficulty.value = '适中';
@@ -525,13 +543,60 @@ export function mount(container, context) {
       fields.append(label);
     }
     content.append(fields);
+    const allocation = el('details', 'exam-scope');
+    allocation.append(el('summary', '', '题型分配 · 默认自动规划'));
+    const custom = el('input');
+    custom.type = 'checkbox';
+    const customLabel = el('label', 'exam-option');
+    customLabel.append(custom, el('span', '', '指定每种题型的数量'));
+    allocation.append(customLabel);
+    const typeFields = el('div', 'exam-type-counts');
+    const counts = new Map();
+    for (const [type, name] of Object.entries(typeNames)) {
+      const label = el('label', 'exam-field');
+      const input = el('input');
+      input.type = 'number';
+      input.min = '0';
+      input.max = '20';
+      input.step = '1';
+      input.value = '2';
+      input.required = true;
+      input.disabled = true;
+      label.append(el('span', '', `${name}题数量`), input);
+      typeFields.append(label);
+      counts.set(type, input);
+    }
+    custom.addEventListener('change', () => {
+      for (const input of counts.values()) input.disabled = !custom.checked;
+    });
+    allocation.append(
+      typeFields,
+      el(
+        'p',
+        'exam-meta',
+        '数量合计应等于题数。版式固定按题型分节，填空逐空作答，解答题填写过程。',
+      ),
+    );
+    content.append(allocation);
     const create = button(
       '根据学习进度出卷',
       () => {
         if (!count.reportValidity() || !duration.reportValidity()) return;
+        let types = '';
+        if (custom.checked) {
+          if ([...counts.values()].some((input) => !input.reportValidity())) return;
+          if (
+            [...counts.values()].reduce((n, input) => n + Number(input.value), 0) !==
+            Number(count.value)
+          ) {
+            showNotice('各题型数量之和必须等于题数。');
+            return;
+          }
+          types = `题型数量固定为：${[...counts].map(([type, input]) => `${typeNames[type]}${input.value}题`).join('、')}。`;
+        }
         void model(
           'prepare',
-          `请根据当前学习进度，制作一份${count.value}题、${duration.value}分钟、${difficulty.value}难度的模拟试卷。${range.value ? `补充范围：${range.value}。` : ''}请逐题审核，整卷确认后再让我开始考试；学习依据不足时先向我确认。`,
+          `请根据当前学习进度，制作一份${count.value}题、${duration.value}分钟、${difficulty.value}难度的模拟试卷。${types}${range.value ? `补充范围：${range.value}。` : ''}请先确定结构，逐题生成，整卷审核一次后再让我开始考试；学习依据不足时先向我确认。`,
         );
       },
       'exam-primary',
@@ -540,16 +605,26 @@ export function mount(container, context) {
     content.append(create);
     syncMetadata();
   }
+  function renderPlan(content) {
+    if (!state.paper.sections?.length) return;
+    const plan = el('div', 'exam-plan');
+    plan.append(el('p', 'exam-meta', '试卷结构 · 按题型分节'));
+    for (const section of state.paper.sections)
+      plan.append(
+        el('p', '', `${typeNames[section.type]} ${section.count} 题 · ${section.points} 分`),
+      );
+    content.append(plan);
+  }
   function renderPreparing(content) {
     const p = state.paper;
     content.append(
       el('h3', '', p.status === 'paused' ? '出卷已暂停' : (phaseNames[p.phase] ?? '正在准备试卷')),
-      el('p', 'exam-progress', `已审核 ${p.approved} / ${p.questionCount} 题`),
+      el('p', 'exam-progress', `已生成 ${p.generated} / ${p.questionCount} 题`),
     );
     const progress = el('progress');
     progress.max = p.questionCount;
-    progress.value = p.approved;
-    progress.setAttribute('aria-label', '已审核题目');
+    progress.value = p.generated;
+    progress.setAttribute('aria-label', '已生成题目');
     content.append(progress);
     content.append(
       el(
@@ -557,18 +632,35 @@ export function mount(container, context) {
         'exam-description',
         p.status === 'paused'
           ? (errors[p.error] ?? '已完成的题目已保存，可以继续。')
-          : '逐题编写、独立解答与审校，完成后检查整张试卷。现在还未开始计时。',
+          : p.phase === 'repair'
+            ? `只修订问题题目，剩余 ${p.repairsRemaining} 题。修订后复核一次。`
+            : '题目生成完成后，统一审核答案与整卷一致性。现在还未开始计时。',
       ),
     );
+    if (p.status === 'paused' && p.issues?.length) {
+      const issues = el('ul', 'exam-issues');
+      for (const issue of p.issues)
+        issues.append(
+          el(
+            'li',
+            '',
+            `第 ${issue.questionIds.map((id) => id.slice(1)).join('、')} 题：${issueNames[issue.category]}`,
+          ),
+        );
+      content.append(issues);
+    }
+    if (p.formatQuestion)
+      content.append(el('p', 'exam-notice', `第 ${p.formatQuestion.slice(1)} 题格式需修订。`));
+    renderPlan(content);
     const range = el('details', 'exam-scope');
     range.append(el('summary', '', '本次学习范围'), el('p', 'exam-description', p.learningContext));
     content.append(range);
     if (p.status === 'paused')
       content.append(
         modelButton(
-          '继续出卷',
+          p.stage === 'blocked' ? '再尝试一轮修订' : '继续出卷',
           'prepare',
-          `请继续制作《${p.title}》，保留已审核的题目。试卷编号：${p.id}`,
+          `请继续制作《${p.title}》，保留已完成内容；若上轮修订仍未通过，请只再尝试一轮定向修订。试卷编号：${p.id}`,
         ),
       );
     else
@@ -604,7 +696,10 @@ export function mount(container, context) {
       mark.setAttribute('aria-pressed', String(marked.includes(q.id)));
       heading.append(mark);
     }
-    article.append(heading, math(q.stem));
+    article.append(
+      heading,
+      math(q.type === 'fill' ? q.stem.replace(/\[\[b(\d+)\]\]/g, '（第$1空）____') : q.stem),
+    );
     if (attempt.status === 'answering') {
       const fields = [];
       if (q.type === 'short') {
@@ -623,6 +718,30 @@ export function mount(container, context) {
         });
         article.append(input);
         fields.push(input);
+      } else if (q.type === 'fill') {
+        for (const [index, blank] of q.blanks.entries()) {
+          const label = el('label', 'exam-field exam-blank');
+          const input = el('input');
+          input.type = 'text';
+          input.maxLength = 1000;
+          input.dataset.blankIndex = String(index);
+          input.value = draft[q.id]?.[index] ?? '';
+          input.setAttribute('aria-label', `第${q.id.slice(1)}题第${index + 1}空`);
+          const capture = () => {
+            draft[q.id] = q.blanks.map((_, i) => fields[i]?.value ?? '');
+          };
+          input.addEventListener('input', (event) => {
+            capture();
+            if (!event.isComposing) edited();
+          });
+          input.addEventListener('compositionend', () => {
+            capture();
+            edited();
+          });
+          label.append(el('span', 'exam-meta', `第 ${index + 1} 空 · ${blank.points} 分`), input);
+          article.append(label);
+          fields.push(input);
+        }
       } else {
         const choices = el('fieldset', 'exam-choices');
         const legend = el('legend', 'exam-sr-only', `第${q.id.slice(1)}题选项`);
@@ -630,13 +749,13 @@ export function mount(container, context) {
         for (const option of q.options) {
           const label = el('label', 'exam-option'),
             input = el('input');
-          input.type = q.type === 'single' ? 'radio' : 'checkbox';
+          input.type = q.type === 'multiple' ? 'checkbox' : 'radio';
           input.name = `${attempt.id}-${q.id}`;
           input.value = option.id;
           input.checked = (draft[q.id] ?? []).includes(option.id);
           input.addEventListener('change', () => {
             draft[q.id] =
-              q.type === 'single'
+              q.type !== 'multiple'
                 ? [option.id]
                 : fields.filter((v) => v.checked).map((v) => v.value);
             edited();
@@ -654,7 +773,15 @@ export function mount(container, context) {
       const answer = attempt.answers[q.id];
       article.append(
         el('p', 'exam-answer-label', '你的作答'),
-        math(Array.isArray(answer) ? answer.join('、') || '未作答' : answer || '未作答'),
+        math(
+          q.type === 'fill'
+            ? q.blanks.map((_, i) => `第${i + 1}空：${answer?.[i] || '未作答'}`).join('\n')
+            : q.type === 'judge'
+              ? (q.options.find((o) => o.id === answer?.[0])?.text ?? '未作答')
+              : Array.isArray(answer)
+                ? answer.join('、') || '未作答'
+                : answer || '未作答',
+        ),
       );
       const grade = attempt.grades[q.id];
       if (grade) {

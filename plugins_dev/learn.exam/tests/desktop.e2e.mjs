@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { setTimeout as delay } from 'node:timers/promises';
-import { responseFor, spec } from './fixtures.mjs';
+import { responseFor, fiveSpec as spec, parsePrompt } from './fixtures.mjs';
 import { panelRegressions } from './panel-regressions.mjs';
 const host = process.env.LIMEA_REPO_DIR;
 assert.ok(host && process.env.LIMEA_TEST_APP_DIR, '设置 LIMEA_REPO_DIR 与 LIMEA_TEST_APP_DIR');
@@ -59,10 +59,8 @@ const server = createServer(async (req, res) => {
       assert.equal(body.messages.filter((m) => m.role === 'user').length, 1);
       assert.equal(body.messages.filter((m) => m.role === 'system').length, 0);
       const text = textOf(body.messages.find((m) => m.role === 'user'));
-      const phase = text.split('\n')[0].slice(3),
-        data = JSON.parse(text.split('任务数据:\n')[1]);
+      const { phase, data } = parsePrompt({ prompt: text });
       privatePhases.push(phase);
-      if (phase === 'solve') assert.ok(!JSON.stringify(body).includes('PRIVATE-ANSWER'));
       if (phase === 'question' && firstQuestion) {
         firstQuestion = false;
         await questionGate;
@@ -238,28 +236,39 @@ try {
     'Work不可见',
   );
   let panel = await openPanel(page);
-  await panel.getByLabel('题数', { exact: true }).fill('3');
-  await panel.getByLabel('考试时长（分钟）', { exact: true }).fill('5');
+  await panel.getByLabel('题数', { exact: true }).fill('5');
+  await panel.getByLabel('考试时长（分钟）', { exact: true }).fill('10');
+  await panel.getByText('题型分配 · 默认自动规划', { exact: true }).click();
+  await panel.getByLabel('指定每种题型的数量', { exact: true }).check();
+  for (const name of ['单选', '多选', '判断', '填空', '解答'])
+    await panel.getByLabel(`${name}题数量`, { exact: true }).fill('1');
   await panel.getByRole('button', { name: '根据学习进度出卷', exact: true }).click();
   await until(() => privatePhases.includes('question'));
-  await panel.getByText('已审核 0 / 3 题', { exact: true }).waitFor();
+  await panel.getByText('已生成 0 / 5 题', { exact: true }).waitFor();
   await page.screenshot({ path: join(artifacts, 'preparing.png') });
   releaseQuestion();
   await panel.getByRole('button', { name: '开始考试', exact: true }).waitFor();
   assert.equal(await panel.locator('.exam-question').count(), 0);
+  assert.deepEqual(privatePhases, ['blueprint', ...Array(5).fill('question'), 'whole']);
+  assert.equal(saved().paper.spec.questionTypes.length, 5);
   assert.ok(publicRequests.every((b) => !JSON.stringify(b).includes('PRIVATE-ANSWER')));
   await panel.getByRole('button', { name: '开始考试', exact: true }).click();
   await panel.locator('[data-question=q1]').waitFor();
   await panel.locator('[data-question=q1] input[value=A]').check();
   await panel.locator('[data-question=q2] input[value=A]').check();
   await panel.locator('[data-question=q2] input[value=C]').check();
-  const answer = panel.getByLabel('第3题作答', { exact: true });
+  await panel.locator('[data-question=q3] input[value=F]').check();
+  await panel.locator('[data-question=q3] input[value=T]').check();
+  assert.equal(await panel.locator('[data-question=q3] input:checked').count(), 1);
+  await panel.getByLabel('第4题第1空', { exact: true }).fill('2');
+  await panel.getByLabel('第4题第2空', { exact: true }).fill('二的平方');
+  const answer = panel.getByLabel('第5题作答', { exact: true });
   await answer.fill('等量增加相同的量后仍然相等。');
-  await until(() => saved().attempt?.answers.q3 === '等量增加相同的量后仍然相等。');
+  await until(() => saved().attempt?.answers.q5 === '等量增加相同的量后仍然相等。');
   await answer.focus();
   await answer.press('Enter');
   await answer.pressSequentially('这是我的解释。');
-  await until(() => saved().attempt?.answers.q3.includes('这是我的解释。'));
+  await until(() => saved().attempt?.answers.q5.includes('这是我的解释。'));
   assert.equal(
     await answer.evaluate((node) => node.getRootNode().activeElement === node),
     true,
@@ -267,8 +276,8 @@ try {
   );
   assert.equal(saved().attempt.status, 'answering', 'Enter不提交试卷');
   assert.ok((await panel.locator('.katex').count()) > 0, '真实公式渲染');
-  await panel.locator('[data-question=q3]').getByRole('button', { name: '标记待检查' }).click();
-  await until(() => saved().attempt.marked.includes('q3'));
+  await panel.locator('[data-question=q5]').getByRole('button', { name: '标记待检查' }).click();
+  await until(() => saved().attempt.marked.includes('q5'));
   await page.screenshot({ path: join(artifacts, 'answering.png') });
   const before = saved().attempt;
   // Hide the entire workspace; the deadline and answer state remain authoritative.
@@ -283,12 +292,14 @@ try {
   app = null;
   page = await launch();
   panel = await openPanel(page, true);
-  await panel.getByLabel('第3题作答', { exact: true }).waitFor();
+  await panel.getByLabel('第5题作答', { exact: true }).waitFor();
   assert.equal(
-    await panel.getByLabel('第3题作答', { exact: true }).inputValue(),
-    before.answers.q3,
+    await panel.getByLabel('第5题作答', { exact: true }).inputValue(),
+    before.answers.q5,
   );
   assert.equal(saved().attempt.deadline, before.deadline);
+  assert.equal(await panel.getByLabel('第4题第1空', { exact: true }).inputValue(), '2');
+  assert.equal(await panel.getByLabel('第4题第2空', { exact: true }).inputValue(), '二的平方');
   await app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].setBounds({ width: 960, height: 850 }),
   );
@@ -300,17 +311,18 @@ try {
   await panel.getByRole('button', { name: '批改试卷', exact: true }).waitFor();
   await panel.getByRole('button', { name: '批改试卷', exact: true }).click();
   await panel.getByText('100 / 100 分', { exact: true }).waitFor();
-  await panel.locator('[data-question=q3] summary').click();
+  await panel.locator('[data-question=q5] summary').click();
   await app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].setBounds({ width: 1450, height: 1000 }),
   );
   await page.screenshot({ path: join(artifacts, 'results.png') });
   assert.equal(saved().attempt.status, 'graded');
   assert.equal(privatePhases.filter((p) => p === 'grade').length, 1);
+  assert.equal(privatePhases.filter((p) => p === 'grade-fill').length, 1);
   await panelRegressions(page, saved().paper.sessionId);
   assert.deepEqual(errors, []);
   console.log(
-    '桌面验证通过：模式过滤、逐题审核、保密、作答保存与焦点、重启、计时、公式、窄面板、交卷批改。',
+    '桌面验证通过：模式过滤、五题型、五题七请求、整卷审核、保密、作答保存与焦点、重启、计时、公式、窄面板、交卷批改。',
   );
 } catch (error) {
   if (app)

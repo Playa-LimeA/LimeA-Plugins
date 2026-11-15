@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { questionTypes, objective, objectiveRubric, issueNames } from './question-types.mjs';
 
 export const id = z.string().min(1).max(128);
 const text = (max) => z.string().trim().min(1).max(max);
@@ -10,6 +11,18 @@ export const specSchema = z
     questionCount: z.number().int().min(3).max(20),
     durationMinutes: z.number().int().min(5).max(180),
     difficulty: z.enum(['基础', '适中', '进阶']),
+    questionTypes: z
+      .array(
+        z
+          .object({
+            type: z.enum(questionTypes),
+            count: z.number().int().min(1).max(20),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(5)
+      .optional(),
   })
   .strict();
 export const prepareSchema = z
@@ -26,7 +39,7 @@ export const reviewInputSchema = z
 export const slotSchema = z
   .object({
     id: text(12),
-    type: z.enum(['single', 'multiple', 'short']),
+    type: z.enum(questionTypes),
     topic: text(100),
     points: z.number().int().min(1).max(100),
     minutes: z.number().min(0.5).max(180),
@@ -43,27 +56,50 @@ export const questionSchema = z
     rubric: text(600),
     explanation: text(600),
     basis: text(250),
-  })
-  .strict();
-export const solutionSchema = z
-  .object({
-    answer: text(1000),
-    selectedOptions: z.array(text(2)).max(6),
-    verdict: z.enum(['clear', 'ambiguous', 'uncertain']),
-    reason: text(600),
-  })
-  .strict();
-export const auditSchema = z
-  .object({
-    verdict: z.enum(['pass', 'revise', 'uncertain']),
-    reason: text(800),
+    blanks: z
+      .array(
+        z
+          .object({
+            id: text(2),
+            answers: z.array(text(100)).min(1).max(6),
+            points: z.number().int().min(1).max(100),
+          })
+          .strict(),
+      )
+      .max(4)
+      .optional(),
   })
   .strict();
 export const wholeAuditSchema = z
   .object({
-    verdict: z.enum(['pass', 'revise', 'uncertain']),
-    reason: text(800),
-    questionIds: z.array(text(12)).max(20),
+    issues: z
+      .array(
+        z
+          .object({
+            questionIds: z.array(text(12)).min(1).max(20),
+            severity: z.enum(['blocking', 'advice']),
+            category: z.enum(Object.keys(issueNames)),
+            reason: text(500),
+          })
+          .strict(),
+      )
+      .max(20),
+  })
+  .strict();
+export const fillScoreSchema = z
+  .object({
+    blanks: z
+      .array(
+        z
+          .object({
+            id: text(2),
+            verdict: z.enum(['correct', 'incorrect', 'uncertain']),
+            explanation: text(250),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(4),
   })
   .strict();
 export const scoreSchema = z
@@ -83,20 +119,40 @@ export function publicResult(value) {
   return value;
 }
 export function validateBlueprint(raw, spec) {
+  validateSpec(spec);
   const value = bounded(blueprintSchema.parse(raw), 6000);
   if (
     value.slots.length !== spec.questionCount ||
     value.slots.some((slot, i) => slot.id !== `q${i + 1}`) ||
     value.slots.reduce((n, s) => n + s.points, 0) !== 100 ||
-    value.slots.reduce((n, s) => n + s.minutes, 0) > spec.durationMinutes
+    value.slots.reduce((n, s) => n + s.minutes, 0) > spec.durationMinutes ||
+    value.slots.some(
+      (s, i) => i && questionTypes.indexOf(s.type) < questionTypes.indexOf(value.slots[i - 1].type),
+    ) ||
+    (spec.questionTypes &&
+      questionTypes.some(
+        (type) =>
+          value.slots.filter((s) => s.type === type).length !==
+          (spec.questionTypes.find((s) => s.type === type)?.count ?? 0),
+      ))
   )
     throw new Error('invalid-blueprint');
   return value;
 }
+export function validateSpec(raw) {
+  const spec = specSchema.parse(raw);
+  if (
+    spec.questionTypes &&
+    (new Set(spec.questionTypes.map((v) => v.type)).size !== spec.questionTypes.length ||
+      spec.questionTypes.reduce((n, v) => n + v.count, 0) !== spec.questionCount)
+  )
+    throw new Error('invalid-question-types');
+  return spec;
+}
 export const sameOptions = (a, b) =>
   JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
 export function validateQuestion(raw, slot) {
-  const value = bounded(questionSchema.parse(raw), 2200, 'question-too-long');
+  const value = questionSchema.parse(raw);
   const keys = value.options.map((o) => o.id);
   if (
     value.id !== slot.id ||
@@ -107,14 +163,54 @@ export function validateQuestion(raw, slot) {
   )
     throw new Error('invalid-question');
   if (
-    slot.type === 'short'
+    ['short', 'fill'].includes(slot.type)
       ? keys.length || value.correctOptions.length
       : keys.length < 2 ||
         !value.correctOptions.length ||
-        (slot.type === 'single' && value.correctOptions.length !== 1)
+        (['single', 'judge'].includes(slot.type) && value.correctOptions.length !== 1) ||
+        (slot.type === 'multiple' && value.correctOptions.length < 2)
   )
     throw new Error('invalid-question');
-  return value;
+  if (
+    slot.type === 'judge' &&
+    JSON.stringify(value.options) !==
+      JSON.stringify([
+        { id: 'T', text: '正确' },
+        { id: 'F', text: '错误' },
+      ])
+  )
+    throw new Error('invalid-question');
+  if (slot.type === 'fill') {
+    const blanks = value.blanks ?? [];
+    const tokens = [...value.stem.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1]);
+    if (
+      !blanks.length ||
+      blanks.reduce((n, b) => n + b.points, 0) !== slot.points ||
+      blanks.some((b, i) => b.id !== `b${i + 1}`) ||
+      !sameOptions(
+        tokens,
+        blanks.map((b) => b.id),
+      )
+    )
+      throw new Error('invalid-question');
+    value.rubric = `逐空判分：${blanks.map((b, i) => `第${i + 1}空${b.points}分`).join('，')}；与允许答案语义等价得该空满分，错误或空答零分。`;
+  } else if (value.blanks?.length) throw new Error('invalid-question');
+  if (objective(slot.type)) value.rubric = objectiveRubric(slot.type);
+  return bounded(value, 2200, 'question-too-long');
+}
+export function validateAudit(raw, slots) {
+  const audit = wholeAuditSchema.parse(raw);
+  const ids = slots.map((s) => s.id);
+  for (const issue of audit.issues) {
+    if (
+      new Set(issue.questionIds).size !== issue.questionIds.length ||
+      issue.questionIds.some((id) => !ids.includes(id))
+    )
+      throw new Error('invalid-model-result');
+    if (['style', 'balance'].includes(issue.category)) issue.severity = 'advice';
+    if (issue.category === 'uncertainty') issue.severity = 'blocking';
+  }
+  return audit;
 }
 export function normalizeAnswers(raw, paper) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('invalid-answers');
@@ -126,13 +222,21 @@ export function normalizeAnswers(raw, paper) {
     if (slot.type === 'short') {
       if (typeof answer !== 'string' || answer.length > 4000) throw new Error('invalid-answer');
       result[key] = answer;
+    } else if (slot.type === 'fill') {
+      if (
+        !Array.isArray(answer) ||
+        answer.length !== question.blanks.length ||
+        answer.some((v) => typeof v !== 'string' || v.length > 1000)
+      )
+        throw new Error('invalid-answer');
+      result[key] = [...answer];
     } else {
       if (
         !Array.isArray(answer) ||
         answer.length > question.options.length ||
         answer.some((v) => !question.options.some((o) => o.id === v)) ||
         new Set(answer).size !== answer.length ||
-        (slot.type === 'single' && answer.length > 1)
+        (['single', 'judge'].includes(slot.type) && answer.length > 1)
       )
         throw new Error('invalid-answer');
       result[key] = [...answer].sort();
@@ -142,5 +246,5 @@ export function normalizeAnswers(raw, paper) {
 }
 export const answered = (answer) =>
   Array.isArray(answer)
-    ? answer.length > 0
+    ? answer.some((v) => typeof v === 'string' && v.trim().length > 0)
     : typeof answer === 'string' && answer.trim().length > 0;

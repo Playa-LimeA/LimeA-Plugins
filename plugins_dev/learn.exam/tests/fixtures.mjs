@@ -8,9 +8,30 @@ export const spec = {
   difficulty: '适中',
 };
 export const scope = { sessionId: 'learning-1', mode: 'learn' };
+export const fiveSpec = {
+  ...spec,
+  questionCount: 5,
+  durationMinutes: 10,
+  questionTypes: ['single', 'multiple', 'judge', 'fill', 'short'].map((type) => ({
+    type,
+    count: 1,
+  })),
+};
 export function parsePrompt(input) {
+  const phase = input.prompt.split('\n')[0].slice(3);
+  if (['whole', 'verify'].includes(phase)) {
+    const marker = '\n试卷文档:\n';
+    const start = input.prompt.indexOf(marker);
+    return {
+      phase,
+      data: {
+        ...JSON.parse(input.prompt.slice(0, start).split('审核元数据:\n')[1]),
+        document: input.prompt.slice(start + marker.length),
+      },
+    };
+  }
   return {
-    phase: input.prompt.split('\n')[0].slice(3),
+    phase,
     data: JSON.parse(input.prompt.split('任务数据:\n')[1]),
   };
 }
@@ -19,44 +40,67 @@ export function responseFor(phase, data) {
     return {
       slots: Array.from({ length: data.questionCount }, (_, i) => ({
         id: `q${i + 1}`,
-        type: ['single', 'multiple', 'short'][i % 3],
+        type: data.questionTypes
+          ? data.questionTypes.flatMap((v) => Array(v.count).fill(v.type))[i]
+          : ['single', 'multiple', 'short'][Math.floor((i * 3) / data.questionCount)],
         topic: `代数考点${i + 1}`,
         points: Math.floor(100 / data.questionCount) + (i < 100 % data.questionCount ? 1 : 0),
         minutes: 1,
       })),
     };
-  if (phase === 'question')
+  if (phase === 'question' || phase === 'repair')
     return {
       id: data.slot.id,
       stem:
-        data.slot.type === 'short'
-          ? '请说明等式两边同时加上相同的数为什么仍然相等。'
-          : `求解 $x+1=3$。这是第${data.slot.id.slice(1)}题。`,
+        data.slot.type === 'fill'
+          ? '求解 $x+1=3$，$x=$[[b1]]，$x^2=$[[b2]]。'
+          : data.slot.type === 'judge'
+            ? '$2+2=4$。判断正误。'
+            : data.slot.type === 'short'
+              ? '请说明等式两边同时加上相同的数为什么仍然相等。'
+              : `求解 $x+1=3$。这是第${data.slot.id.slice(1)}题。`,
       options:
-        data.slot.type === 'short'
-          ? []
-          : [
-              { id: 'A', text: '$x=2$' },
-              { id: 'B', text: '$x=3$' },
-              { id: 'C', text: '$x=1+1$' },
-            ],
-      correctOptions:
-        data.slot.type === 'short' ? [] : data.slot.type === 'single' ? ['A'] : ['A', 'C'],
+        data.slot.type === 'judge'
+          ? [
+              { id: 'T', text: '正确' },
+              { id: 'F', text: '错误' },
+            ]
+          : ['short', 'fill'].includes(data.slot.type)
+            ? []
+            : [
+                { id: 'A', text: '$x=2$' },
+                { id: 'B', text: '$x=3$' },
+                { id: 'C', text: data.slot.type === 'multiple' ? '$x=1+1$' : '$x=4$' },
+              ],
+      correctOptions: ['short', 'fill'].includes(data.slot.type)
+        ? []
+        : data.slot.type === 'judge'
+          ? ['T']
+          : data.slot.type === 'single'
+            ? ['A']
+            : ['A', 'C'],
       referenceAnswer: `PRIVATE-ANSWER-${data.slot.id}：等式性质。`,
       rubric: '按正确的等式性质和完整解释评分。',
       explanation: '等量增加相同的量后仍然相等。',
       basis: '本次学习范围：基础代数。',
+      ...(data.slot.type === 'fill'
+        ? {
+            blanks: [
+              { id: 'b1', answers: ['2'], points: Math.floor(data.slot.points / 2) },
+              {
+                id: 'b2',
+                answers: ['4'],
+                points: data.slot.points - Math.floor(data.slot.points / 2),
+              },
+            ],
+          }
+        : {}),
     };
-  if (phase === 'solve')
+  if (phase === 'whole' || phase === 'verify') return { issues: [] };
+  if (phase === 'grade-fill')
     return {
-      answer: '等量加等量，结果仍然相等。',
-      selectedOptions: data.type === 'short' ? [] : data.type === 'single' ? ['A'] : ['A', 'C'],
-      verdict: 'clear',
-      reason: '条件充分，结论确定。',
+      blanks: data.pending.map(({ id }) => ({ id, verdict: 'correct', explanation: '语义等价。' })),
     };
-  if (phase === 'audit') return { verdict: 'pass', reason: '独立解答一致，评分标准明确。' };
-  if (phase === 'whole')
-    return { verdict: 'pass', questionIds: [], reason: '范围、分值、用时符合计划。' };
   if (phase === 'grade')
     return { verdict: 'correct', score: data.slot.points, explanation: '准确解释了等式性质。' };
   throw new Error(`unknown phase ${phase}`);

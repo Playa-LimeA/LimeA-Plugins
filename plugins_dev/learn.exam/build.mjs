@@ -21,7 +21,7 @@ for (const font of fonts)
 const manifest = {
   id: 'learn.exam',
   name: '学习试卷',
-  version: '0.1.0',
+  version: '0.1.1',
   apiVersion: 13,
   hostVersion: '>=0.1.0 <1.0.0',
   entry: 'backend.mjs',
@@ -42,7 +42,7 @@ const manifest = {
       id: 'prepare',
       name: '制作学习试卷',
       description:
-        '根据当前用户学习进度制作计时模拟试卷，逐题生成、独立解题审校、整卷复核后发布。create必须先从当前对话整理有据可查的learningContext，依据不足先询问；不把讨论过等同掌握，不提供答案参数。默认10题30分钟适中，支持3-20题/5-180分钟。resume使用原paperId，仅用户主动要求后继续。暂停或失败时告知用户，不自动反复重试。就绪后提示在右侧开始考试，禁止自行透露题目答案。',
+        '根据当前学习进度制作计时模拟试卷：先定题型数量/考点/分值，固定模板逐题生成，汇总整卷审核一次，通过后发布。支持single单选、multiple多选、judge判断、fill填空、short解答；用户指定数量时在spec.questionTypes传非零项，合计必须等于questionCount，否则可省略自动规划。create从当前对话整理learningContext，依据不足先询问；不把讨论过等同掌握，不提供答案参数。默认10题30分钟适中，支持3-20题/5-180分钟。实质问题最多一轮自动定向修订再复核。resume使用原paperId，仅用户主动要求后继续，暂停时不要自动反复调用。就绪后提示右侧开考，禁止透露未交卷答案。',
       inputSchema: jsonSchema(prepareSchema),
       access: 'local',
       panelId: 'learn.exam.paper',
