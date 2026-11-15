@@ -21,7 +21,7 @@ for (const font of fonts)
 const manifest = {
   id: 'learn.exam',
   name: '学习试卷',
-  version: '0.2.0',
+  version: '0.2.1',
   apiVersion: 13,
   hostVersion: '>=0.1.0 <1.0.0',
   entry: 'backend.mjs',

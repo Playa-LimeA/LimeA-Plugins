@@ -571,9 +571,7 @@ export function mount(container, context) {
       content:
         '请根据当前学习进度，使用学习试卷插件制作一份计时模拟试卷，不使用抽查工具。优先遵从我补充的范围、题量、时长、难度和题型；未指定时默认10题、30分钟、适中难度。先确定题型与分值，逐题编写，整卷审核后再让我开始考试。若学习依据不足，先向我确认。',
     });
-    showNotice(
-      accepted ? '已放入输入框，补充要求后发送。' : '未能加入输入框，请检查当前草稿或稍后重试。',
-    );
+    showNotice(accepted ? '' : '未能加入输入框，请检查当前草稿或稍后重试。');
   }
   function renderSetup(content) {
     const symbol = el('div', 'exam-stage-symbol');
