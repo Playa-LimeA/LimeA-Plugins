@@ -1,0 +1,2 @@
+This plugin bundles zero external runtime dependencies in its distributed artifacts.
+Todoist is a trademark of Doist Inc. This plugin is independently developed for LimeA.

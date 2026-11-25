@@ -75,6 +75,23 @@
       }
     },
     {
+      "id": "connectors.todoist",
+      "name": "Todoist",
+      "description": "连接 Todoist 账号，在 LimeA 中查询和筛选待办任务、项目、分区、标签与评论，并按当前会话权限创建、修改、完成、重开或删除任务。",
+      "author": "Playa",
+      "version": "1.0.0",
+      "hostVersion": ">=0.1.0",
+      "category": "efficiency",
+      "tier": "official",
+      "permissions": [],
+      "archive": "plugins/connectors.todoist/1.0.0.zip",
+      "sha256": "02930a86fd47e5c253cf9c29f53a778983345baf07704ba9837771734a89c7ba",
+      "icon": {
+        "path": "icons/connectors.todoist/1.0.0.png",
+        "sha256": "707a3d34e97d1e143df13a675132bac9ddc1b6a6c709fe6cab612b8563a0d766"
+      }
+    },
+    {
       "id": "games.draw_guess",
       "name": "你画我猜",
       "description": "和当前角色轮流画画、猜词。后台独立出题，画家三选一，双方获得字数提示；用户边画角色边猜，角色也能看着实际画面补画。支持闭合区域填色、画笔与操作音效、撤销重做、暂停恢复和聊天内轮次回顾，不设积分。安装并启用后，在 Chat 模式右侧的“小游戏”中打开，也可从插件详情页查看玩法说明。需要支持插件接口版本 12 的 LimeA 和支持图片输入的模型。",

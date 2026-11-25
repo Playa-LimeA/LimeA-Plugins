@@ -1,0 +1,257 @@
+{
+  "id": "connectors.todoist",
+  "name": "Todoist",
+  "version": "1.0.0",
+  "apiVersion": 10,
+  "hostVersion": ">=0.1.0",
+  "entry": "backend.mjs",
+  "toolPresentation": {
+    "name": "Todoist",
+    "icon": "assets/icon.png"
+  },
+  "connections": [
+    {
+      "provider": "todoist",
+      "permissionSet": "todoist-read-write"
+    }
+  ],
+  "tools": [
+    {
+      "id": "list_tasks",
+      "name": "查询待办任务",
+      "description": "查询当前活跃任务。可传 filter 使用 Todoist 筛选语法（如 'today | overdue'、'7 days'、'p1'），或按 project_id、section_id、parent_id、label、ids 筛选。使用 cursor 翻页。",
+      "modes": ["work", "chat"],
+      "access": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "filter": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "lang": { "type": "string", "minLength": 2, "maxLength": 16 },
+          "project_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "section_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "parent_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "label": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "ids": { "type": "string", "pattern": "^[A-Za-z0-9_,-]{1,640}$" },
+          "cursor": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+        },
+        "required": []
+      }
+    },
+    {
+      "id": "get_task",
+      "name": "查看任务详情",
+      "description": "按 taskId 读取单个 Todoist 任务的完整详情。",
+      "modes": ["work", "chat"],
+      "access": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" }
+        },
+        "required": ["taskId"]
+      }
+    },
+    {
+      "id": "list_projects",
+      "name": "查看项目与分区",
+      "description": "列出用户的 Todoist 项目；若指定 projectId 则返回该项目详情及其下的分区（sections）列表。",
+      "modes": ["work", "chat"],
+      "access": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "cursor": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+        },
+        "required": []
+      }
+    },
+    {
+      "id": "list_labels",
+      "name": "查看标签",
+      "description": "列出当前 Todoist 账号的标签列表。",
+      "modes": ["work", "chat"],
+      "access": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cursor": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+        },
+        "required": []
+      }
+    },
+    {
+      "id": "list_comments",
+      "name": "查看评论",
+      "description": "分页读取指定任务（task_id）或项目（project_id）下的评论，两者必传其一。",
+      "modes": ["work", "chat"],
+      "access": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "task_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "project_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "cursor": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+        },
+        "required": []
+      }
+    },
+    {
+      "id": "create_task",
+      "name": "创建任务",
+      "description": "在 Todoist 中创建新任务。注意 priority 数值 4 为最高优先级 P1，1 为普通 P4。支持 due_string 自然语言截止时间。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "content": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "description": { "type": "string", "maxLength": 16000 },
+          "project_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "section_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "parent_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "labels": {
+            "type": "array",
+            "maxItems": 50,
+            "items": { "type": "string", "minLength": 1, "maxLength": 60 }
+          },
+          "priority": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "due_string": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "due_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "due_datetime": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "due_lang": { "type": "string", "minLength": 2, "maxLength": 16 },
+          "deadline_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+        },
+        "required": ["content"]
+      }
+    },
+    {
+      "id": "update_task",
+      "name": "修改任务",
+      "description": "更新指定 taskId 任务的标题、说明、标签、优先级或截止日期（至少提供一个修改字段）。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "content": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "description": { "type": "string", "maxLength": 16000 },
+          "labels": {
+            "type": "array",
+            "maxItems": 50,
+            "items": { "type": "string", "minLength": 1, "maxLength": 60 }
+          },
+          "priority": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "due_string": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "due_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "due_datetime": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "due_lang": { "type": "string", "minLength": 2, "maxLength": 16 },
+          "deadline_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+        },
+        "required": ["taskId"]
+      }
+    },
+    {
+      "id": "complete_task",
+      "name": "完成任务",
+      "description": "将指定 taskId 的任务标记为已完成（周期性任务会自动推进到下一周期）。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" }
+        },
+        "required": ["taskId"]
+      }
+    },
+    {
+      "id": "reopen_task",
+      "name": "重新打开任务",
+      "description": "将已完成但需恢复的 taskId 任务重新打开为未完成状态。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" }
+        },
+        "required": ["taskId"]
+      }
+    },
+    {
+      "id": "delete_task",
+      "name": "删除任务",
+      "description": "永久删除指定 taskId 的任务。仅在用户明确要求删除而非完成时使用。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" }
+        },
+        "required": ["taskId"]
+      }
+    },
+    {
+      "id": "create_project",
+      "name": "创建项目",
+      "description": "在 Todoist 中创建新项目。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "description": { "type": "string", "maxLength": 4000 },
+          "parent_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "color": { "type": "string", "pattern": "^[a-z_]{1,32}$" },
+          "is_favorite": { "type": "boolean" },
+          "view_style": { "type": "string", "enum": ["list", "board", "calendar"] }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "id": "create_comment",
+      "name": "发表评论",
+      "description": "在指定任务（task_id）或项目（project_id）下添加评论，两者必传其一。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "content": { "type": "string", "minLength": 1, "maxLength": 15000 },
+          "task_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "project_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" }
+        },
+        "required": ["content"]
+      }
+    }
+  ],
+  "page": {
+    "entry": "page.mjs",
+    "description": "连接 Todoist 账号，在 LimeA 中查询和筛选待办任务、项目、分区、标签与评论，并按当前会话权限创建、修改、完成、重开或删除任务。",
+    "author": "Playa",
+    "illustration": "assets/banner.png"
+  },
+  "resources": ["assets/icon.png"],
+  "skills": ["skills/todoist/SKILL.md"]
+}
