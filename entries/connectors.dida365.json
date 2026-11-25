@@ -1,0 +1,10 @@
+{
+  "author": "Playa",
+  "category": "efficiency",
+  "tier": "official",
+  "description": "连接滴答清单（国内版 Dida365）账号，在 LimeA 中查看收集箱与清单任务，并按当前会话权限创建、修改、完成或删除任务及管理清单。",
+  "license": "MIT",
+  "icon": "assets/icon.png",
+  "repository": "plugins_dev/connectors.dida365",
+  "documentation": "plugins_dev/connectors.dida365/README.md"
+}

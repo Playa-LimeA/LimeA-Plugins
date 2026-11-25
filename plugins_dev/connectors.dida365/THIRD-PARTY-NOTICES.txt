@@ -1,0 +1,2 @@
+This plugin bundles zero external runtime dependencies in its distributed artifacts.
+Dida365 (滴答清单) is a trademark of Hangzhou Appest Technology Co., Ltd. This plugin is independently developed for LimeA.

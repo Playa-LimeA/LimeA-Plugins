@@ -1,0 +1,261 @@
+{
+  "id": "connectors.dida365",
+  "name": "滴答清单",
+  "version": "1.0.0",
+  "apiVersion": 10,
+  "hostVersion": ">=0.1.0",
+  "entry": "backend.mjs",
+  "toolPresentation": {
+    "name": "滴答清单",
+    "icon": "assets/icon.png"
+  },
+  "connections": [
+    {
+      "provider": "dida365",
+      "permissionSet": "dida365-read-write"
+    }
+  ],
+  "tools": [
+    {
+      "id": "list_projects",
+      "name": "查看清单列表",
+      "description": "列出当前滴答清单账号下的所有自建清单。注意收集箱不包含在列表中，读取收集箱任务请直接调用 get_project_tasks({ projectId: 'inbox' })。",
+      "modes": ["work", "chat"],
+      "access": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "id": "get_project_tasks",
+      "name": "查看清单任务",
+      "description": "读取指定清单（默认 'inbox' 收集箱）中的未完成任务与分组。支持按 query 关键字、priority（0/1/3/5）筛选，并用 offset 与 limit 分页。",
+      "modes": ["work", "chat"],
+      "access": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "query": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "priority": { "type": "integer", "enum": [0, 1, 3, 5] },
+          "offset": { "type": "integer", "minimum": 0, "maximum": 10000 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+        },
+        "required": []
+      }
+    },
+    {
+      "id": "get_task",
+      "name": "查看任务详情",
+      "description": "按 projectId（收集箱为 'inbox'）与 taskId 读取单个任务的完整详情与子任务清单。",
+      "modes": ["work", "chat"],
+      "access": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "taskId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" }
+        },
+        "required": ["projectId", "taskId"]
+      }
+    },
+    {
+      "id": "create_task",
+      "name": "创建任务",
+      "description": "在滴答清单中创建新任务。省略 projectId 默认存入收集箱；priority 取值 0=无, 1=低, 3=中, 5=高；日期格式如 2026-12-01T18:00:00+0800。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "content": { "type": "string", "maxLength": 16000 },
+          "desc": { "type": "string", "maxLength": 4000 },
+          "isAllDay": { "type": "boolean" },
+          "startDate": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "dueDate": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "timeZone": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "reminders": {
+            "type": "array",
+            "maxItems": 10,
+            "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+          },
+          "repeatFlag": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "priority": { "type": "integer", "enum": [0, 1, 3, 5] },
+          "sortOrder": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+                "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+                "status": { "type": "integer", "enum": [0, 1] },
+                "isAllDay": { "type": "boolean" },
+                "startDate": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "completedTime": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "timeZone": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "sortOrder": { "type": "integer" }
+              },
+              "required": ["title"]
+            }
+          }
+        },
+        "required": ["title"]
+      }
+    },
+    {
+      "id": "update_task",
+      "name": "修改任务",
+      "description": "全量更新指定 taskId 的任务（必传 projectId 与 title）。修改前应先调用 get_task 读取原完整字段以避免未传字段被清空。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "content": { "type": "string", "maxLength": 16000 },
+          "desc": { "type": "string", "maxLength": 4000 },
+          "isAllDay": { "type": "boolean" },
+          "startDate": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "dueDate": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "timeZone": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "reminders": {
+            "type": "array",
+            "maxItems": 10,
+            "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+          },
+          "repeatFlag": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "priority": { "type": "integer", "enum": [0, 1, 3, 5] },
+          "sortOrder": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+                "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+                "status": { "type": "integer", "enum": [0, 1] },
+                "isAllDay": { "type": "boolean" },
+                "startDate": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "completedTime": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "timeZone": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "sortOrder": { "type": "integer" }
+              },
+              "required": ["title"]
+            }
+          }
+        },
+        "required": ["taskId", "projectId", "title"]
+      }
+    },
+    {
+      "id": "complete_task",
+      "name": "完成任务",
+      "description": "将指定清单（收集箱为 'inbox'）中的 taskId 任务标记为已完成。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "taskId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" }
+        },
+        "required": ["projectId", "taskId"]
+      }
+    },
+    {
+      "id": "delete_task",
+      "name": "删除任务",
+      "description": "永久删除指定清单中的 taskId 任务。仅在用户明确要求删除而非完成时使用。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "taskId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" }
+        },
+        "required": ["projectId", "taskId"]
+      }
+    },
+    {
+      "id": "create_project",
+      "name": "创建清单",
+      "description": "在滴答清单中创建新的任务清单或笔记清单。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "sortOrder": { "type": "integer" },
+          "viewMode": { "type": "string", "enum": ["list", "kanban", "timeline"] },
+          "kind": { "type": "string", "enum": ["TASK", "NOTE"] }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "id": "update_project",
+      "name": "修改清单",
+      "description": "更新指定 projectId 清单的名称、颜色或视图模式（不可用于收集箱 'inbox'）。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "sortOrder": { "type": "integer" },
+          "viewMode": { "type": "string", "enum": ["list", "kanban", "timeline"] },
+          "kind": { "type": "string", "enum": ["TASK", "NOTE"] }
+        },
+        "required": ["projectId"]
+      }
+    },
+    {
+      "id": "delete_project",
+      "name": "删除清单",
+      "description": "删除指定 projectId 清单（不可用于收集箱 'inbox'）。",
+      "modes": ["work", "chat"],
+      "access": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" }
+        },
+        "required": ["projectId"]
+      }
+    }
+  ],
+  "page": {
+    "entry": "page.mjs",
+    "description": "连接滴答清单（国内版 Dida365）账号，在 LimeA 中查看收集箱与清单任务，并按当前会话权限创建、修改、完成或删除任务及管理清单。",
+    "author": "Playa",
+    "illustration": "assets/banner.png"
+  },
+  "resources": ["assets/icon.png"],
+  "skills": ["skills/dida365/SKILL.md"]
+}
