@@ -8,7 +8,7 @@
 | 序号 | 图标 | 名称 | 作者 | 协议 | 源码／原仓库 | 文档 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | <img src="icons/appearance.wallpaper/0.2.0.png" width="40" height="40" alt=""> | 壁纸与玻璃外观 | Playa | [MIT](plugins_dev/appearance.wallpaper/LICENSE) · [素材说明](plugins_dev/appearance.wallpaper/ASSETS.md) | [本仓库](plugins_dev/appearance.wallpaper) | [说明](plugins_dev/appearance.wallpaper/README.md) |
-| 2 | <img src="icons/connectors.dida365/1.0.0.png" width="40" height="40" alt=""> | 滴答清单 | Playa | [MIT](plugins_dev/connectors.dida365/LICENSE) | [本仓库](plugins_dev/connectors.dida365) | [说明](plugins_dev/connectors.dida365/README.md) |
+| 2 | <img src="icons/connectors.dida365/1.0.1.png" width="40" height="40" alt=""> | 滴答清单 | Playa | [MIT](plugins_dev/connectors.dida365/LICENSE) | [本仓库](plugins_dev/connectors.dida365) | [说明](plugins_dev/connectors.dida365/README.md) |
 | 3 | <img src="icons/connectors.github/1.0.2.png" width="40" height="40" alt=""> | GitHub | Playa | [MIT](plugins_dev/connectors.github/LICENSE) | [本仓库](plugins_dev/connectors.github) | [说明](plugins_dev/connectors.github/README.md) |
 | 4 | <img src="icons/connectors.gmail/1.0.4.png" width="40" height="40" alt=""> | Gmail（待谷歌认证） | Playa | [MIT](plugins_dev/connectors.gmail/LICENSE) | [本仓库](plugins_dev/connectors.gmail) | [说明](plugins_dev/connectors.gmail/README.md) |
 | 5 | <img src="icons/connectors.notion/2.1.2.png" width="40" height="40" alt=""> | Notion | Playa | [MIT](plugins_dev/connectors.notion/LICENSE) | [本仓库](plugins_dev/connectors.notion) | [说明](plugins_dev/connectors.notion/README.md) |

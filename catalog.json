@@ -28,16 +28,16 @@
       "name": "滴答清单",
       "description": "连接滴答清单（国内版 Dida365）账号，在 LimeA 中查看收集箱与清单任务，并按当前会话权限创建、修改、完成或删除任务及管理清单。",
       "author": "Playa",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "hostVersion": ">=0.1.0",
       "category": "efficiency",
       "tier": "official",
       "permissions": [],
-      "archive": "plugins/connectors.dida365/1.0.0.zip",
-      "sha256": "1b08ad4bdd893e8343262c8b925e654497e2d523d90af0e7718350db5de3cf93",
+      "archive": "plugins/connectors.dida365/1.0.1.zip",
+      "sha256": "fa27a1ccbc17b147ae421963e178169bfccbbec296ca96f36b3f98d7f4e26850",
       "icon": {
-        "path": "icons/connectors.dida365/1.0.0.png",
-        "sha256": "eb3e08927a31c9de66591c36ceb46256006ad68a55de4a29838432ace2affcc9"
+        "path": "icons/connectors.dida365/1.0.1.png",
+        "sha256": "a068a3fd8c5acdccba79eb93eecae6c02f4f1f704be1e619444cacedaa12c8c0"
       }
     },
     {
