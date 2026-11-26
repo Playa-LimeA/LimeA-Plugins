@@ -1,0 +1,93 @@
+export const zh = {
+  accountTitle: '百度网盘账号',
+  loading: '正在读取连接状态',
+  notConnected: '未连接百度网盘',
+  authorizing: '等待百度网盘授权',
+  authorizingHint: '请在系统浏览器中登录百度账号并同意授权，完成后回到 LimeA。',
+  reauthorization: '需要重新连接百度网盘',
+  ready: '已连接',
+  scope: '授权目录浏览、搜索、配额查看与文件整理（个人应用默认位于 /apps/<应用名>/）',
+  connect: '连接百度网盘',
+  continue: '继续授权',
+  cancel: '取消授权',
+  refresh: '刷新令牌',
+  disconnect: '断开连接',
+  retry: '重试',
+  savedAcknowledging: '已保存连接，正在向授权网关确认。',
+  recoveryHint: '连接或授权状态仍待同步，可刷新令牌或重新授权。',
+  loadFailed: '无法读取百度网盘连接状态，请重试。',
+  actionFailed: '本次连接操作未完成，请重试。',
+  vaultUnavailable: '系统安全存储当前不可用，无法保存百度网盘凭据。',
+  revocation: {
+    not_requested: '',
+    pending: '已断开本地连接，正在清理授权状态。',
+    confirmed: '已断开本地连接。',
+    unknown: '已断开本地连接；百度网盘不支持自动远端撤销，可前往百度账号授权管理页面手动移除授权。',
+    failed: '已断开本地连接，请前往百度账号授权管理页面确认是否需要手动移除授权。',
+  },
+  auth: {
+    failed: '未完成百度网盘授权，可重新发起连接。',
+    expired: '本次授权已过期，请重新发起连接。',
+    unknown: '授权结果未能确认，请先检查是否已授权后再试。',
+    cancelled: '已取消本次授权。',
+  },
+  featuresTitle: '网盘浏览与整理能力',
+  features: [
+    ['浏览与搜索目录', '列出授权目录文件、按关键字递归检索，并查看空间容量与文件元数据。'],
+    ['安全整理文件', '支持新建文件夹、重命名、移动、复制与删除，写入前跟随会话权限审批。'],
+    ['沙箱目录隔离', '个人应用默认仅访问专属目录 /apps/<应用名>/，且不暴露下载直链。'],
+  ],
+};
+
+export const en = {
+  accountTitle: 'Baidu Netdisk account',
+  loading: 'Checking connection',
+  notConnected: 'Baidu Netdisk not connected',
+  authorizing: 'Waiting for Baidu Netdisk authorization',
+  authorizingHint:
+    'Sign in to Baidu in your browser and approve access, then return to LimeA.',
+  reauthorization: 'Reconnection required',
+  ready: 'Connected',
+  scope: 'Directory browse, search, quota & file organization (personal apps default to /apps/<app>/)',
+  connect: 'Connect Baidu Netdisk',
+  continue: 'Continue authorization',
+  cancel: 'Cancel',
+  refresh: 'Refresh token',
+  disconnect: 'Disconnect',
+  retry: 'Retry',
+  savedAcknowledging: 'Connection saved; confirming with the authorization gateway.',
+  recoveryHint: 'Connection state is still syncing. Refresh or reconnect if needed.',
+  loadFailed: 'Could not load Baidu Netdisk connection status.',
+  actionFailed: 'Could not complete that connection action. Try again.',
+  vaultUnavailable: 'System secure storage is unavailable, so credentials cannot be saved.',
+  revocation: {
+    not_requested: '',
+    pending: 'Disconnected locally; finalizing cleanup.',
+    confirmed: 'Disconnected locally.',
+    unknown:
+      'Disconnected locally. Baidu Netdisk does not support automatic remote revocation; remove access in your Baidu account settings if needed.',
+    failed:
+      'Disconnected locally. Check your Baidu account authorization settings to remove access if needed.',
+  },
+  auth: {
+    failed: 'Authorization did not finish. Try connecting again.',
+    expired: 'Authorization expired. Start a new connection.',
+    unknown: 'Authorization outcome could not be confirmed. Check your account and try again.',
+    cancelled: 'Authorization cancelled.',
+  },
+  featuresTitle: 'Drive & file capabilities',
+  features: [
+    [
+      'Browse and search files',
+      'List authorized folders, search recursively by keyword, and inspect quota and file metadata.',
+    ],
+    [
+      'Organize files safely',
+      'Create folders, rename, move, copy and delete files with session-level approval controls.',
+    ],
+    [
+      'Scoped app directory',
+      'Personal apps are scoped to /apps/<app>/ and never expose raw download links.',
+    ],
+  ],
+};

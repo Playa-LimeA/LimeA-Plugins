@@ -1,0 +1,10 @@
+{
+  "author": "Playa",
+  "category": "efficiency",
+  "tier": "official",
+  "description": "连接百度网盘账号，在 LimeA 中浏览与搜索授权目录（个人应用默认位于 /apps/<应用名>/）、查看容量与文件元数据，并按当前会话权限新建文件夹、重命名、移动、复制或删除文件。",
+  "license": "MIT",
+  "icon": "assets/icon.png",
+  "repository": "plugins_dev/connectors.baidu-netdisk",
+  "documentation": "plugins_dev/connectors.baidu-netdisk/README.md"
+}

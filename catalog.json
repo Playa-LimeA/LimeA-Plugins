@@ -24,6 +24,23 @@
       }
     },
     {
+      "id": "connectors.baidu-netdisk",
+      "name": "百度网盘",
+      "description": "连接百度网盘账号，在 LimeA 中浏览与搜索授权目录（个人应用默认位于 /apps/<应用名>/）、查看容量与文件元数据，并按当前会话权限新建文件夹、重命名、移动、复制或删除文件。",
+      "author": "Playa",
+      "version": "1.0.0",
+      "hostVersion": ">=0.1.0",
+      "category": "efficiency",
+      "tier": "official",
+      "permissions": [],
+      "archive": "plugins/connectors.baidu-netdisk/1.0.0.zip",
+      "sha256": "14255c779c7895f85bc5d94522f3b158ecdd0a15d65350bd6689c61b1bd56ea4",
+      "icon": {
+        "path": "icons/connectors.baidu-netdisk/1.0.0.png",
+        "sha256": "85a02bb483533472997a1d598d15996b329bda9e1d58784bfc6a219a5d4bd67d"
+      }
+    },
+    {
       "id": "connectors.dida365",
       "name": "滴答清单",
       "description": "连接滴答清单（国内版 Dida365）账号，在 LimeA 中查看收集箱与清单任务，并按当前会话权限创建、修改、完成或删除任务及管理清单。",
