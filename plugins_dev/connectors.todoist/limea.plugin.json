@@ -1,7 +1,7 @@
 {
   "id": "connectors.todoist",
   "name": "Todoist",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "apiVersion": 10,
   "hostVersion": ">=0.1.0",
   "entry": "backend.mjs",

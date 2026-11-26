@@ -28,16 +28,16 @@
       "name": "百度网盘",
       "description": "连接百度网盘账号，在 LimeA 中浏览与搜索授权目录（个人应用默认位于 /apps/<应用名>/）、查看容量与文件元数据，并按当前会话权限新建文件夹、重命名、移动、复制或删除文件。",
       "author": "Playa",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "hostVersion": ">=0.1.0",
       "category": "efficiency",
       "tier": "official",
       "permissions": [],
-      "archive": "plugins/connectors.baidu-netdisk/1.0.1.zip",
-      "sha256": "3dc11e5e12a0391d34de42490e06ac3f112e8932f063db5f034155adc7ca01f5",
+      "archive": "plugins/connectors.baidu-netdisk/1.0.2.zip",
+      "sha256": "e5f4c3a131162adbfe955d01b21964aef7365f67664910946871ad28639a305d",
       "icon": {
-        "path": "icons/connectors.baidu-netdisk/1.0.1.png",
-        "sha256": "85a02bb483533472997a1d598d15996b329bda9e1d58784bfc6a219a5d4bd67d"
+        "path": "icons/connectors.baidu-netdisk/1.0.2.png",
+        "sha256": "6685470f3910d03de991ba016804036c3eb402bccc544d4daccf8341b3e77a70"
       }
     },
     {
@@ -113,16 +113,16 @@
       "name": "Todoist",
       "description": "连接 Todoist 账号，在 LimeA 中查询和筛选待办任务、项目、分区、标签与评论，并按当前会话权限创建、修改、完成、重开或删除任务。",
       "author": "Playa",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "hostVersion": ">=0.1.0",
       "category": "efficiency",
       "tier": "official",
       "permissions": [],
-      "archive": "plugins/connectors.todoist/1.0.0.zip",
-      "sha256": "02930a86fd47e5c253cf9c29f53a778983345baf07704ba9837771734a89c7ba",
+      "archive": "plugins/connectors.todoist/1.0.1.zip",
+      "sha256": "6991534e3ec4c3183b00afa538470e781b33ee982152316dbc02a01bb2789237",
       "icon": {
-        "path": "icons/connectors.todoist/1.0.0.png",
-        "sha256": "707a3d34e97d1e143df13a675132bac9ddc1b6a6c709fe6cab612b8563a0d766"
+        "path": "icons/connectors.todoist/1.0.1.png",
+        "sha256": "5b6e47228c036cd7325d6526496200067f4cf1711632016e588858d57a806b69"
       }
     },
     {

@@ -1,7 +1,7 @@
 {
   "id": "connectors.baidu-netdisk",
   "name": "百度网盘",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "apiVersion": 10,
   "hostVersion": ">=0.1.0",
   "entry": "backend.mjs",

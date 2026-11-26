@@ -19,7 +19,7 @@ export function mount(container, context) {
   query('#account-title').textContent = t.accountTitle;
   query('.account-icon').src = new URL('assets/icon.png', context.resourceBase).href;
   query('.features h2 .heading-label').textContent = t.featuresTitle;
-  const featureIcons = ['search', 'check-square', 'list-tree'];
+  const featureIcons = ['search', 'circle-check', 'list-tree'];
   for (const [index, [title, detail]] of t.features.entries()) {
     const row = document.createElement('li'),
       icon = document.createElement('span'),
