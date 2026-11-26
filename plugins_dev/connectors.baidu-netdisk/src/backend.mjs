@@ -11,7 +11,8 @@ const CATEGORY_LABELS = {
 };
 
 function requireConnections(context) {
-  if (!context?.connections) throw new Error('baidu-netdisk-connection-required');
+  context?.signal?.throwIfAborted?.();
+  if (!context?.connections) throw new Error('connection-access-denied');
   return context.connections;
 }
 
@@ -222,9 +223,14 @@ export function createHandlers() {
   };
 }
 
-export function activate(context) {
+export function apply(ctx) {
   const handlers = createHandlers();
   for (const [id, handler] of Object.entries(handlers)) {
-    context.tools.register(id, handler);
+    ctx.tools.register(id, async (input = {}, run) => {
+      const result = await handler(input, run);
+      if (Buffer.byteLength(JSON.stringify(result)) > 24000)
+        throw new Error('connection-result-too-large');
+      return result;
+    });
   }
 }

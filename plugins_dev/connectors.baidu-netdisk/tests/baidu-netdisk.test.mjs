@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createHandlers, normalizeFsidsParam } from '../src/backend.mjs';
+import { apply, createHandlers, normalizeFsidsParam } from '../src/backend.mjs';
+
+test('exports Cordis apply(ctx) entrypoint and registers all 9 tools', () => {
+  const registered = [];
+  apply({
+    tools: {
+      register(id, fn) {
+        registered.push([id, typeof fn]);
+      },
+    },
+  });
+  assert.equal(registered.length, 9);
+  assert.ok(registered.every(([, type]) => type === 'function'));
+});
 
 test('normalizes 64-bit integer string fsids without precision loss and rejects invalid items', () => {
   assert.equal(normalizeFsidsParam(['110238770066592812', 42]), '[110238770066592812,42]');
