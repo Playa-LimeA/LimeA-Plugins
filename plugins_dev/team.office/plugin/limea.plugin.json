@@ -1,11 +1,17 @@
 {
   "id": "team.office",
   "name": "团队办公室",
-  "version": "0.4.5",
+  "version": "0.4.7",
   "apiVersion": 15,
   "hostVersion": ">=0.1.0 <1",
   "entry": "backend.mjs",
   "permissions": ["profile:avatar"],
+  "page": {
+    "entry": "page.mjs",
+    "description": "把团队工作区变成一栋可浏览的三维办公室。切换楼层，查看团队成员的工作状态，以及他们现在所在的区域。",
+    "author": "Playa",
+    "illustration": "assets/office-cover.png"
+  },
   "panels": [
     {
       "id": "team.office.floor",
@@ -16,6 +22,8 @@
     }
   ],
   "resources": [
+    "assets/icon.png",
+    "page.css",
     "office.css",
     "activity.mjs",
     "floor-picker.mjs",

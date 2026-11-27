@@ -202,6 +202,25 @@
         "path": "icons/learn.exam/0.2.2.png",
         "sha256": "87ddb4ccaf32ab3489282894b21aeeee38725ac8af3e63e08395a11127c98072"
       }
+    },
+    {
+      "id": "team.office",
+      "name": "团队办公室",
+      "description": "在团队右栏打开三维办公室，通过楼栋图切换招待大厅、通用办公层和总裁层。每层有 12 个普通工位，人数增加时自动扩层。点击成员头像可查看工作状态、当前活动和所在区域。启用后从团队聊天标题旁的办公楼图标打开，需支持插件接口版本 15 的 LimeA。",
+      "author": "Playa",
+      "version": "0.4.7",
+      "hostVersion": ">=0.1.0 <1",
+      "category": "social",
+      "tier": "official",
+      "permissions": [
+        "profile:avatar"
+      ],
+      "archive": "plugins/team.office/0.4.7.zip",
+      "sha256": "4829a5313200f684ed18574a5ba8f217d9744cf3bf9a321f54df90518bdc0546",
+      "icon": {
+        "path": "icons/team.office/0.4.7.png",
+        "sha256": "6f6cfdc2887b159c0c8911d65e61655d6b36b28e0ca0e910b12c3fe78de1b33a"
+      }
     }
   ]
 }
