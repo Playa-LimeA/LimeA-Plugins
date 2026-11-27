@@ -1,0 +1,16 @@
+{
+  "name": "@limea-plugins/team-office",
+  "version": "0.3.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test tests/activity.test.mjs"
+  },
+  "dependencies": {
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

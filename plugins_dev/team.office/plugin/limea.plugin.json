@@ -1,0 +1,29 @@
+{
+  "id": "team.office",
+  "name": "团队办公室",
+  "version": "0.3.2",
+  "apiVersion": 15,
+  "hostVersion": ">=0.1.0 <1",
+  "entry": "backend.mjs",
+  "permissions": [],
+  "panels": [
+    {
+      "id": "team.office.floor",
+      "name": "办公室",
+      "entry": "panel.mjs",
+      "placement": "teamOffice",
+      "modes": ["group"]
+    }
+  ],
+  "resources": [
+    "office.css",
+    "activity.mjs",
+    "office-routes.mjs",
+    "orbit.mjs",
+    "vendor/three-office.mjs",
+    "assets/standard-floor.glb",
+    "assets/standard-scene.json",
+    "assets/standard-floor.webp",
+    "assets/standard-seats.json"
+  ]
+}

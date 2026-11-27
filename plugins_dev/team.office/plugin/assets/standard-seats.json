@@ -1,0 +1,247 @@
+{
+  "image": "standard-floor.webp",
+  "width": 2160,
+  "height": 1640,
+  "capacity": 12,
+  "coordinates": "image normalized [x, y], origin top-left; worldPosition uses Blender Z-up meters",
+  "avatarDiameterAtSourcePx": 54,
+  "statusHeightAtSourcePx": 33,
+  "seats": [
+    {
+      "id": "A1",
+      "worldPosition": [
+        -7.04,
+        3.8,
+        0.053
+      ],
+      "avatarCenter": [
+        0.3181265,
+        0.2204655
+      ],
+      "statusCenter": [
+        0.3181265,
+        0.1919122
+      ]
+    },
+    {
+      "id": "A2",
+      "worldPosition": [
+        -5.08,
+        3.8,
+        0.053
+      ],
+      "avatarCenter": [
+        0.3858804,
+        0.2540208
+      ],
+      "statusCenter": [
+        0.3858804,
+        0.2254674
+      ]
+    },
+    {
+      "id": "A3",
+      "worldPosition": [
+        -3.12,
+        3.8,
+        0.053
+      ],
+      "avatarCenter": [
+        0.4536343,
+        0.287576
+      ],
+      "statusCenter": [
+        0.4536343,
+        0.2590227
+      ]
+    },
+    {
+      "id": "A4",
+      "worldPosition": [
+        -7.04,
+        0.98,
+        0.053
+      ],
+      "avatarCenter": [
+        0.2724963,
+        0.3236058
+      ],
+      "statusCenter": [
+        0.2724963,
+        0.2950525
+      ]
+    },
+    {
+      "id": "A5",
+      "worldPosition": [
+        -5.08,
+        0.98,
+        0.053
+      ],
+      "avatarCenter": [
+        0.3402502,
+        0.3571611
+      ],
+      "statusCenter": [
+        0.3402502,
+        0.3286077
+      ]
+    },
+    {
+      "id": "A6",
+      "worldPosition": [
+        -3.12,
+        0.98,
+        0.053
+      ],
+      "avatarCenter": [
+        0.4080041,
+        0.3907163
+      ],
+      "statusCenter": [
+        0.4080041,
+        0.362163
+      ]
+    },
+    {
+      "id": "B1",
+      "worldPosition": [
+        -7.04,
+        -1.34,
+        0.053
+      ],
+      "avatarCenter": [
+        0.2349566,
+        0.4084589
+      ],
+      "statusCenter": [
+        0.2349566,
+        0.3799056
+      ]
+    },
+    {
+      "id": "B2",
+      "worldPosition": [
+        -5.08,
+        -1.34,
+        0.053
+      ],
+      "avatarCenter": [
+        0.3027105,
+        0.4420142
+      ],
+      "statusCenter": [
+        0.3027105,
+        0.4134608
+      ]
+    },
+    {
+      "id": "B3",
+      "worldPosition": [
+        -3.12,
+        -1.34,
+        0.053
+      ],
+      "avatarCenter": [
+        0.3704644,
+        0.4755694
+      ],
+      "statusCenter": [
+        0.3704644,
+        0.4470161
+      ]
+    },
+    {
+      "id": "B4",
+      "worldPosition": [
+        -7.04,
+        -4.16,
+        0.053
+      ],
+      "avatarCenter": [
+        0.1893264,
+        0.5115992
+      ],
+      "statusCenter": [
+        0.1893264,
+        0.4830459
+      ]
+    },
+    {
+      "id": "B5",
+      "worldPosition": [
+        -5.08,
+        -4.16,
+        0.053
+      ],
+      "avatarCenter": [
+        0.2570803,
+        0.5451545
+      ],
+      "statusCenter": [
+        0.2570803,
+        0.5166012
+      ]
+    },
+    {
+      "id": "B6",
+      "worldPosition": [
+        -3.12,
+        -4.16,
+        0.053
+      ],
+      "avatarCenter": [
+        0.3248342,
+        0.5787098
+      ],
+      "statusCenter": [
+        0.3248342,
+        0.5501564
+      ]
+    }
+  ],
+  "elevatorSign": {
+    "floorNumberQuad": [
+      [
+        0.7056258,
+        0.3000848
+      ],
+      [
+        0.7192891,
+        0.3068515
+      ],
+      [
+        0.7192891,
+        0.3150181
+      ],
+      [
+        0.7056258,
+        0.3082513
+      ]
+    ],
+    "companyNameQuad": [
+      [
+        0.7007637,
+        0.3102409
+      ],
+      [
+        0.7248306,
+        0.32216
+      ],
+      [
+        0.7248306,
+        0.3276296
+      ],
+      [
+        0.7007637,
+        0.3157105
+      ]
+    ],
+    "cornerOrder": [
+      "topLeft",
+      "topRight",
+      "bottomRight",
+      "bottomLeft"
+    ]
+  }
+}
