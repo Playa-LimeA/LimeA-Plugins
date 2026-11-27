@@ -11,6 +11,9 @@
     [9.3500004, 2.9450002, 6.6500001]
   ],
   "occluderPrefix": "OfficeOccluder_",
+  "screens": [
+    { "center": [5.7, 1.314, 1.351], "size": [2.34, 1.31], "yaw": 0 }
+  ],
   "elevatorSign": {
     "floorNumberQuad": [
       [3.122091, 2.4076, -6.038],

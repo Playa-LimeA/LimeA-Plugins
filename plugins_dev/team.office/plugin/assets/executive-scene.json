@@ -27,6 +27,9 @@
     ]
   ],
   "occluderPrefix": "OfficeOccluder_",
+  "screens": [
+    { "center": [2.036, 1.435, 3.57], "size": [2.016, 1.125], "yaw": 1.5707963268 }
+  ],
   "image": {
     "width": 1620,
     "height": 1230

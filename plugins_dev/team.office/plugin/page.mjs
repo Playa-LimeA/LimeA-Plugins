@@ -1,8 +1,11 @@
+import { mountScreenSettings } from './screen-settings.mjs';
+
 const copy = {
   zh: {
     usage: '打开方式',
     path: '进入「团队」，点击聊天标题旁的办公楼图标，办公室会在右栏打开。',
     features: '插件功能',
+    screens: '电视播放',
     items: [
       ['楼栋图切层', '点楼层标题展开楼栋图，在招待大厅、通用办公层和总裁层之间切换。'],
       ['固定工位', '普通成员每层最多 12 位，工位排满后自动增加楼层。指定助理坐在总裁层的助理办公室。'],
@@ -14,6 +17,7 @@ const copy = {
     usage: 'How to open',
     path: 'Go to Team and click the building icon next to the chat title to open the office in the right sidebar.',
     features: 'Features',
+    screens: 'TV playback',
     items: [
       ['Switch floors', 'Open the building map from the floor title and choose the lobby, a standard floor, or the executive floor.'],
       ['Assigned desks', 'Each standard floor seats up to 12 members. Space expands as the team grows, and the designated assistant sits on the executive floor.'],
@@ -31,7 +35,8 @@ function element(tag, text) {
   return node;
 }
 
-export function mount(container, { language, resourceBase, signal, controls }) {
+export function mount(container, context) {
+  const { language, resourceBase, signal, controls } = context;
   signal.throwIfAborted();
   const labels = language.toLowerCase().startsWith('zh') ? copy.zh : copy.en;
   const styles = element('link');
@@ -69,10 +74,13 @@ export function mount(container, { language, resourceBase, signal, controls }) {
     features.append(row);
   }
   section(labels.features, 'blocks').append(features);
+  const screenSettings = section(labels.screens, 'file-text');
   container.append(styles, root);
   const icons = slots.map(([slot, name]) => controls.mount(slot, { type: 'icon', name, size: 18 }));
+  const stopScreenSettings = mountScreenSettings(screenSettings, context);
 
   return () => {
+    stopScreenSettings();
     for (const icon of icons) icon.destroy();
     root.remove();
     styles.remove();

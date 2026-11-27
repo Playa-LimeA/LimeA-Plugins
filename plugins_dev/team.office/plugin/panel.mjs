@@ -1,9 +1,11 @@
 import { createOfficeActivity } from './activity.mjs';
 import { createFloorPicker } from './floor-picker.mjs';
 import { getFloors, templates } from './floors.mjs';
+import { loadScreenVideo, readScreenSelection } from './screen-video.mjs';
 
 const assistantArea = ['助理办公室', 'Assistant office'];
 const presidentSeat = { id: 'president' };
+let lastScreenPosition;
 
 const states = {
   'waiting-approval': ['待审批', 'Awaiting approval'],
@@ -226,6 +228,8 @@ export async function mount(container, context) {
   let orbit;
   let officeActivity;
   let sceneLoad;
+  let screenLoad;
+  let screenMedia;
   let sceneLayout;
   let picture;
   let pictureReady = false;
@@ -542,9 +546,59 @@ export async function mount(container, context) {
     if (picking) floorPicker.close(true);
     else closeBoard(true);
   };
+
+  function syncScreenPlayback() {
+    const video = screenMedia?.video;
+    orbit?.setScreenVideo(video);
+    if (!video) return;
+    if (visible && orbit && sceneLayout?.screens?.length) {
+      if (video.paused) void video.play().catch(() => {});
+    } else {
+      video.pause();
+    }
+  }
+
+  function releaseScreenVideo() {
+    if (!screenMedia) return;
+    const { file, video, dispose } = screenMedia;
+    lastScreenPosition = { file, time: video.currentTime };
+    orbit?.setScreenVideo(undefined);
+    dispose();
+    screenMedia = undefined;
+  }
+
+  async function refreshScreenVideo() {
+    screenLoad?.abort();
+    screenLoad = new AbortController();
+    const signal = AbortSignal.any([screenLoad.signal, context.signal]);
+    try {
+      const selected = await readScreenSelection(context.resourceBase, signal);
+      signal.throwIfAborted();
+      if (selected?.file === screenMedia?.file) return;
+      if (!selected) {
+        releaseScreenVideo();
+        return;
+      }
+      const next = await loadScreenVideo(context.resourceBase, selected.file, signal);
+      if (signal.aborted) {
+        next.dispose();
+        return;
+      }
+      releaseScreenVideo();
+      screenMedia = { ...next, file: selected.file };
+      if (lastScreenPosition?.file === selected.file) {
+        next.video.currentTime = Math.min(lastScreenPosition.time, Math.max(0, next.video.duration - 0.05));
+      }
+      syncScreenPlayback();
+    } catch (error) {
+      if (!signal.aborted) console.warn('Office screen video unavailable', error);
+    }
+  }
+
   function showPicture() {
     orbit?.dispose();
     orbit = undefined;
+    syncScreenPlayback();
     delete frame.dataset.orbit;
     scene.removeAttribute('tabindex');
     scene.removeAttribute('aria-label');
@@ -659,6 +713,7 @@ export async function mount(container, context) {
       );
       orbit.zoom(zoom);
       orbit.setVisible(visible);
+      syncScreenPlayback();
     } catch (error) {
       if (signal.aborted) return;
       console.warn('Office 3D view unavailable', error);
@@ -682,7 +737,10 @@ export async function mount(container, context) {
   const stopVisibility = context.onVisibilityChange((next) => {
     visible = next;
     orbit?.setVisible(next);
+    syncScreenPlayback();
+    if (visible) void refreshScreenVideo();
     if (!visible) {
+      screenLoad?.abort();
       floorPicker.close();
       officeActivity?.setVisible(false);
     }
@@ -702,6 +760,8 @@ export async function mount(container, context) {
     stop();
     stopVisibility();
     sceneLoad.abort();
+    screenLoad?.abort();
+    releaseScreenVideo();
     officeActivity?.dispose();
     orbit?.dispose();
     observer.disconnect();

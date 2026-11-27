@@ -18,7 +18,7 @@
 | 9 | <img src="icons/games.gomoku/0.3.2.png" width="40" height="40" alt=""> | 五子棋 | Playa | [MIT](plugins_dev/games.gomoku/LICENSE) · [素材说明](plugins_dev/games.gomoku/ASSETS.md) | [本仓库](plugins_dev/games.gomoku) | [说明](plugins_dev/games.gomoku/README.md) |
 | 10 | <img src="icons/games.shark/0.4.2.png" width="40" height="40" alt=""> | 鲨鱼咬牙 | Playa | [MIT](plugins_dev/games.shark/LICENSE) · [素材说明](plugins_dev/games.shark/ASSETS.md) | [本仓库](plugins_dev/games.shark) | [说明](plugins_dev/games.shark/README.md) |
 | 11 | <img src="icons/learn.exam/0.2.2.png" width="40" height="40" alt=""> | 学习试卷 | Playa | [MIT](plugins_dev/learn.exam/LICENSE) | [本仓库](plugins_dev/learn.exam) | [说明](plugins_dev/learn.exam/README.md) |
-| 12 | <img src="icons/team.office/0.4.7.png" width="40" height="40" alt=""> | 团队办公室 | Playa | [MIT](plugins_dev/team.office/LICENSE) · [素材说明](plugins_dev/team.office/ASSETS.md) | [本仓库](plugins_dev/team.office) | [说明](plugins_dev/team.office/README.md) |
+| 12 | <img src="icons/team.office/0.5.0.png" width="40" height="40" alt=""> | 团队办公室 | Playa | [MIT](plugins_dev/team.office/LICENSE) · [素材说明](plugins_dev/team.office/ASSETS.md) | [本仓库](plugins_dev/team.office) | [说明](plugins_dev/team.office/README.md) |
 
 <!-- plugins:end -->
 

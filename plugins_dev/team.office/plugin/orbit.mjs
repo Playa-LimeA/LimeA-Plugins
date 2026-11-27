@@ -4,6 +4,7 @@ import {
   GLTFLoader,
   HemisphereLight,
   Mesh,
+  MeshBasicMaterial,
   OrbitControls,
   OrthographicCamera,
   PCFShadowMap,
@@ -11,8 +12,10 @@ import {
   Raycaster,
   Scene,
   ShadowMaterial,
+  SRGBColorSpace,
   Vector2,
   Vector3,
+  VideoTexture,
   WebGLRenderer,
 } from './vendor/three-office.mjs';
 
@@ -47,8 +50,10 @@ export async function createOfficeOrbit(
   let observer;
   let keydown;
   let sun;
+  let detachVideo = () => {};
   const world = new Scene();
   const dispose = () => {
+    detachVideo();
     if (requestedFrame !== undefined) cancelAnimationFrame(requestedFrame);
     requestedFrame = undefined;
     observer?.disconnect();
@@ -138,6 +143,7 @@ export async function createOfficeOrbit(
     let shiftX = 0;
     let shiftY = 0;
     let shown = visible;
+    let projectOverlays = true;
     function project(seat, position) {
       const anchor = position ?? anchors.get(seat.id);
       if (!anchor) return null;
@@ -159,14 +165,67 @@ export async function createOfficeOrbit(
         return;
       try {
         renderer.render(world, camera);
-        onRender(project);
+        if (projectOverlays) {
+          projectOverlays = false;
+          onRender(project);
+        }
       } catch {
         failed();
       }
     }
-    function invalidate() {
+    function invalidate(overlays = true) {
+      if (overlays) projectOverlays = true;
       if (shown && requestedFrame === undefined && !signal.aborted)
         requestedFrame = requestAnimationFrame(draw);
+    }
+
+    const screenMaterial = layout.screens?.length ? new MeshBasicMaterial({ toneMapped: false }) : null;
+    const screens = (layout.screens ?? []).map(({ center, size, yaw }) => {
+      const mesh = new Mesh(new PlaneGeometry(...size), screenMaterial);
+      mesh.position.fromArray(center);
+      mesh.rotation.y = yaw;
+      mesh.visible = false;
+      world.add(mesh);
+      return { mesh, aspect: size[0] / size[1] };
+    });
+    let screenVideo;
+    let videoFrame;
+
+    function cancelVideoFrame() {
+      if (videoFrame !== undefined) screenVideo.cancelVideoFrameCallback(videoFrame);
+      videoFrame = undefined;
+    }
+
+    function renderVideoFrames() {
+      if (!shown || !screenVideo || videoFrame !== undefined || signal.aborted) return;
+      videoFrame = screenVideo.requestVideoFrameCallback(() => {
+        videoFrame = undefined;
+        invalidate(false);
+        renderVideoFrames();
+      });
+    }
+
+    detachVideo = () => {
+      cancelVideoFrame();
+      screenMaterial?.map?.dispose();
+    };
+
+    function setScreenVideo(video) {
+      if (!screenMaterial || screenVideo === video) return;
+      detachVideo();
+      screenVideo = video;
+      const texture = video ? new VideoTexture(video) : null;
+      if (texture) texture.colorSpace = SRGBColorSpace;
+      screenMaterial.map = texture;
+      screenMaterial.needsUpdate = true;
+
+      const aspect = video ? video.videoWidth / video.videoHeight : 1;
+      for (const screen of screens) {
+        screen.mesh.visible = Boolean(video);
+        screen.mesh.scale.set(Math.min(1, aspect / screen.aspect), Math.min(1, screen.aspect / aspect), 1);
+      }
+      invalidate(false);
+      renderVideoFrames();
     }
     function updateProjection() {
       const maxX = halfWidth * (1 - 1 / camera.zoom);
@@ -212,6 +271,7 @@ export async function createOfficeOrbit(
     return {
       invalidate,
       project,
+      setScreenVideo,
       setVisible(value) {
         shown = value;
         controls.enabled = value;
@@ -219,7 +279,12 @@ export async function createOfficeOrbit(
           cancelAnimationFrame(requestedFrame);
           requestedFrame = undefined;
         }
-        if (shown) resize();
+        if (shown) {
+          resize();
+          renderVideoFrames();
+        } else {
+          cancelVideoFrame();
+        }
       },
       zoom(value, pointer) {
         if (pointer) {
