@@ -1,7 +1,7 @@
 {
   "id": "team.office",
   "name": "团队办公室",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "apiVersion": 15,
   "hostVersion": ">=0.1.0 <1",
   "entry": "backend.mjs",

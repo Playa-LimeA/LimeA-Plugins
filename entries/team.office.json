@@ -1,6 +1,6 @@
 {
   "author": "Playa",
-  "category": "social",
+  "category": "appearance",
   "tier": "official",
   "description": "在团队右栏打开三维办公室，通过楼栋图切换招待大厅、通用办公层和总裁层。每层有 12 个普通工位，人数增加时自动扩层。点击成员头像可查看工作状态、当前活动和所在区域。详情页可为办公室电视选择一段本地视频，静音循环播放。启用后从团队聊天标题旁的办公楼图标打开，需支持插件接口版本 15 的 LimeA。",
   "icon": "assets/icon.png",
