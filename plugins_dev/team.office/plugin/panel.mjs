@@ -1,4 +1,9 @@
 import { createOfficeActivity } from './activity.mjs';
+import { createFloorPicker } from './floor-picker.mjs';
+import { getFloors, templates } from './floors.mjs';
+
+const assistantArea = ['助理办公室', 'Assistant office'];
+const presidentSeat = { id: 'president' };
 
 const states = {
   'waiting-approval': ['待审批', 'Awaiting approval'],
@@ -59,8 +64,8 @@ function button(className, text) {
   return node;
 }
 
-function face(container, source, name) {
-  const initial = Array.from(name)[0] ?? '·';
+function face(container, source, name, fallback = '·') {
+  const initial = Array.from(name)[0] ?? fallback;
   if (container.avatarSource === source && container.avatarInitial === initial) return;
   container.avatarSource = source;
   container.avatarInitial = initial;
@@ -85,31 +90,30 @@ function place(node, [x, y]) {
   node.style.top = y * 100 + '%';
 }
 
-function signText(svg, corners, layout) {
-  const points = corners.map(([x, y]) => [x * layout.width, y * layout.height]);
-  const [start, right, , bottom] = points;
-  const width = Math.hypot(right[0] - start[0], right[1] - start[1]);
-  const height = Math.hypot(bottom[0] - start[0], bottom[1] - start[1]);
+function makeSign(svg) {
   const label = document.createElementNS(svg.namespaceURI, 'text');
-  label.setAttribute(
-    'transform',
-    'matrix(' +
-      [
-        (right[0] - start[0]) / width,
-        (right[1] - start[1]) / width,
-        (bottom[0] - start[0]) / height,
-        (bottom[1] - start[1]) / height,
-        ...start,
-      ].join(' ') +
-      ')',
-  );
-  label.setAttribute('x', width / 2);
   label.setAttribute('text-anchor', 'middle');
-  label.setAttribute('y', height * 0.86);
   svg.append(label);
-  return (text) => {
-    if (label.textContent === text) return;
-    label.textContent = text;
+  return (text, corners, { width: viewWidth, height: viewHeight }) => {
+    const visible = Boolean(text && corners?.every(Boolean));
+    label.style.display = visible ? '' : 'none';
+    if (!visible) return;
+    const [start, right, , bottom] = corners.map(([x, y]) => [x * viewWidth, y * viewHeight]);
+    const across = [right[0] - start[0], right[1] - start[1]];
+    const down = [bottom[0] - start[0], bottom[1] - start[1]];
+    const width = Math.hypot(...across);
+    const height = Math.hypot(...down);
+    if (width < 1 || height < 1 || across[0] * down[1] - across[1] * down[0] <= 0) {
+      label.style.display = 'none';
+      return;
+    }
+    label.setAttribute(
+      'transform',
+      'matrix(' + [...across.map((v) => v / width), ...down.map((v) => v / height), ...start].join(' ') + ')',
+    );
+    label.setAttribute('x', width / 2);
+    label.setAttribute('y', height * 0.86);
+    if (label.textContent !== text) label.textContent = text;
     label.setAttribute('font-size', height);
     const textWidth = label.getComputedTextLength();
     if (textWidth > width) label.setAttribute('font-size', (height * width) / textWidth);
@@ -119,27 +123,23 @@ function signText(svg, corners, layout) {
 export async function mount(container, context) {
   const english = context.language.toLowerCase().startsWith('en');
   const t = (zh, en) => (english ? en : zh);
+  const translate = (pair) => pair[english ? 1 : 0];
   const resource = (name) => new URL(name, context.resourceBase).href;
   const style = element('link');
   style.rel = 'stylesheet';
   style.href = resource('office.css');
-  const picture = element('img', 'floor-image');
-  picture.alt = t('通用办公层斜俯视图', 'Oblique view of the standard office floor');
-  picture.draggable = false;
-  picture.src = resource('assets/standard-floor.webp');
   const response = await fetch(resource('assets/standard-seats.json'), { signal: context.signal });
   if (!response.ok) throw new Error('Office floor coordinates unavailable');
-  const [layout] = await Promise.all([response.json(), picture.decode()]);
+  const layout = await response.json();
   context.signal.throwIfAborted();
 
   const root = element('section', 'office');
   const bar = element('div', 'floor-bar');
   const floorName = element('div', 'floor-name');
-  const floorCode = element('span', 'floor-code');
-  const name = element('strong', null, t('通用办公层', 'Office floor'));
-  const floorPicker = element('select');
-  floorPicker.setAttribute('aria-label', t('选择办公楼层', 'Select office floor'));
-  floorName.append(floorCode, name, floorPicker);
+  const floorPicker = createFloorPicker(floorName, translate, (id) => {
+    const picked = floors.find((entry) => entry.id === id);
+    if (picked) setFloor(picked);
+  });
   const tools = element('div', 'floor-tools');
   const zoomOut = button(null, '−');
   const zoomIn = button(null, '+');
@@ -159,13 +159,24 @@ export async function mount(container, context) {
   scene.style.setProperty('--scene-ratio', layout.width / layout.height);
   const signage = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   signage.setAttribute('class', 'signage');
-  signage.setAttribute('viewBox', '0 0 ' + layout.width + ' ' + layout.height);
   signage.setAttribute('aria-hidden', 'true');
+  signage.setAttribute('hidden', '');
   const markers = element('div', 'markers');
   markers.addEventListener('pointerdown', (event) => event.stopPropagation());
-  scene.append(picture, signage, markers);
+  const presidentMarker = element('div', 'president-marker');
+  const presidentPortrait = element('span', 'seat-face president-face');
+  const presidentLabel = element('span', 'president-label', t('总裁', 'President'));
+  presidentMarker.setAttribute('role', 'img');
+  presidentMarker.setAttribute('aria-label', t('总裁（你）', 'President (you)'));
+  presidentMarker.hidden = true;
+  presidentMarker.append(presidentPortrait, presidentLabel);
+  markers.append(presidentMarker);
+  scene.append(signage, markers);
   stage.append(scene);
   frame.append(stage);
+  const sceneNotice = element('p', 'scene-notice');
+  sceneNotice.setAttribute('role', 'status');
+  sceneNotice.hidden = true;
   const board = element('section', 'member-board');
   board.id = 'office-member-board';
   board.tabIndex = -1;
@@ -191,7 +202,7 @@ export async function mount(container, context) {
     boardArea,
   );
   board.append(boardHeader, boardFields);
-  sceneShell.append(frame, board);
+  sceneShell.append(frame, sceneNotice, board);
   const membersArea = element('section', 'members');
   const rosterTitle = element('div', 'roster-title');
   const count = element('span', 'count');
@@ -202,24 +213,29 @@ export async function mount(container, context) {
   membersArea.append(rosterTitle, notice, roster);
   root.append(bar, sceneShell, membersArea);
   container.append(style, root);
-  const setFloorSign = signText(signage, layout.elevatorSign.floorNumberQuad, layout);
-  const setCompanySign = signText(signage, layout.elevatorSign.companyNameQuad, layout);
-  let floor = 0;
-  let floorCount = 0;
+  const setFloorSign = makeSign(signage);
+  const setCompanySign = makeSign(signage);
+  let floors = getFloors([], layout.capacity);
+  let floor = floors[1];
   let zoom = 1;
   let snapshot = null;
+  let companyName = '';
   let visible = true;
   let selectedId = null;
   let boardTrigger = null;
   let orbit;
   let officeActivity;
-  let projectPicture = (seat) => seat.avatarCenter;
+  let sceneLoad;
+  let sceneLayout;
+  let picture;
+  let pictureReady = false;
+  let pictureProjection;
   const people = new Map();
-  const translate = (pair) => pair[english ? 1 : 0];
 
   function status(member) {
-    const value = snapshot.activityState === 'ready' ? member.activity : 'unknown';
-    return { value, text: (states[value] ?? states.unknown)[english ? 1 : 0] };
+    const activity = snapshot?.activityState === 'ready' ? member.activity : 'unknown';
+    const value = Object.hasOwn(states, activity) ? activity : 'unknown';
+    return { value, text: translate(states[value]) };
   }
 
   function showBoard(id, trigger) {
@@ -249,18 +265,21 @@ export async function mount(container, context) {
   }
 
   function describeActivity(view, moment) {
-    const state = snapshot.rosterState === 'failed' ? 'unknown' : view.activity.value;
-    const action = (state === 'idle' && moment?.action) || workDescriptions[state];
+    const state = snapshot?.rosterState === 'failed' ? 'unknown' : view.activity.value;
+    const action =
+      state === 'idle'
+        ? (moment?.action ?? view.idleDescription ?? workDescriptions.idle)
+        : workDescriptions[state];
     return { state, action: translate(action) };
   }
 
   function updateBoard() {
     const view = people.get(selectedId);
     if (!view) return;
-    const { member, seat } = view;
+    const { member } = view;
     const moment = officeActivity?.get(selectedId);
     const { state, action } = describeActivity(view, moment);
-    const area = moment?.area ?? [seat.id.startsWith('A') ? 'A 区' : 'B 区', 'Zone ' + seat.id[0]];
+    const area = moment?.area ?? view.area;
     face(boardPortrait, member.avatar, member.name);
     for (const [node, value] of [
       [boardName, member.name],
@@ -306,6 +325,9 @@ export async function mount(container, context) {
     const boxes = [...people.values()]
       .filter(({ marker }) => !marker.hidden)
       .map(({ marker }) => marker.getBoundingClientRect());
+    if (!presidentMarker.hidden) {
+      boxes.push(presidentMarker.getBoundingClientRect(), presidentLabel.getBoundingClientRect());
+    }
     for (const { label, marker } of people.values()) {
       label.hidden = marker.hidden || width < 550;
       if (label.hidden) continue;
@@ -342,21 +364,63 @@ export async function mount(container, context) {
       marker.hidden = point === null;
       if (!point) continue;
       place(marker, point);
-      place(label, !orbit && !position ? seat.statusCenter : [point[0], point[1] - 0.035]);
+      place(label, (!orbit && !position && seat.statusCenter) || [point[0], point[1] - 0.035]);
     }
     updateLabels();
   }
 
+  function projectPicture(seat, position) {
+    if (!pictureReady) return null;
+    if (floor.kind === 'office') return pictureProjection?.(seat, position) ?? seat.avatarCenter;
+    return sceneLayout?.seats.find(({ id }) => id === seat.id)?.imageAnchor ?? null;
+  }
+
+  function updateSignage(project) {
+    const shown = floor.kind !== 'executive' && (orbit || pictureReady);
+    signage.toggleAttribute('hidden', !shown);
+    if (!shown) return;
+    const width = orbit ? scene.clientWidth : picture.naturalWidth;
+    const height = orbit ? scene.clientHeight : picture.naturalHeight;
+    if (!width || !height) return;
+    signage.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+
+    const projectQuad = (quad) => quad?.map((point) => project(null, point));
+    const size = { width, height };
+    if (floor.kind === 'lobby') {
+      const anchor = sceneLayout?.companyAnchor;
+      const quad = orbit ? projectQuad(anchor?.worldQuad) : anchor?.imageQuad;
+      setFloorSign('', null, size);
+      setCompanySign(companyName, quad, size);
+    } else {
+      const sign = orbit ? sceneLayout?.elevatorSign : layout.elevatorSign;
+      const floorQuad = orbit ? projectQuad(sign?.floorNumberQuad) : sign?.floorNumberQuad;
+      const companyQuad = orbit ? projectQuad(sign?.companyNameQuad) : sign?.companyNameQuad;
+      setFloorSign(floor.code, floorQuad, size);
+      setCompanySign(companyName, companyQuad, size);
+    }
+  }
+
+  function updateSceneOverlays(project) {
+    const point =
+      floor.kind === 'executive' && snapshot?.selfAvatar !== undefined
+        ? project(presidentSeat)
+        : null;
+    presidentMarker.hidden = !point;
+    if (point) place(presidentMarker, point);
+    projectMarkers(project);
+    updateSignage(project);
+  }
+
   function updateOfficeActivity() {
     if (!visible) return;
-    projectMarkers(orbit?.project ?? projectPicture);
+    updateSceneOverlays(orbit?.project ?? projectPicture);
     updateBoard();
   }
 
   function syncOfficeActivity() {
     if (!officeActivity) return;
     // A loading snapshot is also sent while reopening the same plugin view.
-    if (!visible || snapshot?.rosterState !== 'ready') {
+    if (!visible || floor.kind !== 'office' || snapshot?.rosterState !== 'ready') {
       officeActivity.setVisible(false);
       return;
     }
@@ -371,50 +435,15 @@ export async function mount(container, context) {
   }
 
   function render() {
-    if (!snapshot || !visible) return;
-    if (snapshot.rosterState !== 'ready') {
-      notice.textContent =
-        snapshot.rosterState === 'failed'
-          ? t('暂时无法读取工位', 'Seats are temporarily unavailable')
-          : t('正在读取工位…', 'Loading seats…');
-      syncOfficeActivity();
-      updateOfficeActivity();
-      return;
-    }
-    const ordinary = snapshot.members.filter(
-      (m) => Number.isInteger(m.seatIndex) && m.seatIndex >= 0,
-    );
-    const total = ordinary.reduce(
-      (n, m) => Math.max(n, 1 + Math.floor(m.seatIndex / layout.capacity)),
-      1,
-    );
-    if (total !== floorCount) {
-      floorCount = total;
-      floor = Math.min(floor, total - 1);
-      floorPicker.replaceChildren(
-        ...Array.from({ length: total }, (_, i) => {
-          const option = element('option', null, t('通用办公层', 'Office floor') + ' ' + (i + 1));
-          option.value = String(i);
-          return option;
-        }),
-      );
-    }
-    floorPicker.hidden = floorCount <= 1;
-    name.hidden = !floorPicker.hidden;
-    floorPicker.value = String(floor);
-    const code = String(floor + 2).padStart(2, '0') + 'F';
-    floorCode.textContent = code;
-    setFloorSign(code);
-    setCompanySign(snapshot.companyName);
-    const members = ordinary
-      .filter((m) => Math.floor(m.seatIndex / layout.capacity) === floor)
-      .sort((a, b) => a.seatIndex - b.seatIndex);
+    const isOffice = floor.kind === 'office';
+    face(presidentPortrait, floor.kind === 'executive' ? snapshot?.selfAvatar : null, '', '');
+    membersArea.hidden = floor.kind === 'lobby';
+    const { members } = floor;
     const ids = new Set(members.map((m) => m.characterId));
     if (selectedId !== null && !ids.has(selectedId)) {
       const boardFocused = board.contains(root.getRootNode().activeElement);
       closeBoard(false);
-      if (boardFocused)
-        (floorPicker.hidden ? (resetView.hidden ? zoomIn : resetView) : floorPicker).focus();
+      if (boardFocused) floorPicker.focus();
     }
     for (const [id, view] of people) {
       if (ids.has(id)) continue;
@@ -427,12 +456,14 @@ export async function mount(container, context) {
       const id = member.characterId;
       const view = people.get(id) ?? makePerson(id);
       people.set(id, view);
-      const seat = layout.seats[member.seatIndex % layout.capacity];
+      const seat = isOffice ? layout.seats[member.seatIndex % layout.capacity] : { id: 'assistant' };
       view.seat = seat;
+      view.area = isOffice ? [seat.id[0] + ' 区', 'Zone ' + seat.id[0]] : assistantArea;
+      view.idleDescription = isOffice ? undefined : ['在助理办公室待命', 'Available in the assistant office'];
       view.member = member;
       const activity = status(member);
       view.activity = activity;
-      const description = member.name + ' · ' + activity.text + ' · ' + seat.id;
+      const description = member.name + ' · ' + activity.text + ' · ' + (isOffice ? seat.id : translate(assistantArea));
       for (const target of [view.marker, view.row]) {
         target.setAttribute('aria-label', description);
         target.dataset.state = activity.value;
@@ -445,8 +476,14 @@ export async function mount(container, context) {
       if (roster.children[index] !== view.row)
         roster.insertBefore(view.row, roster.children[index] ?? null);
     });
-    count.textContent = members.length + ' / ' + layout.capacity;
-    notice.textContent = members.length ? '' : t('本层暂无成员', 'No members on this floor');
+    count.textContent = members.length + ' / ' + (isOffice ? layout.capacity : 1);
+    if (snapshot?.rosterState !== 'ready') {
+      notice.textContent = snapshot?.rosterState === 'failed'
+        ? t('暂时无法读取本层成员', 'Floor members are temporarily unavailable')
+        : t('正在读取本层成员…', 'Loading floor members…');
+    } else {
+      notice.textContent = members.length ? '' : t('本层暂无成员', 'No members on this floor');
+    }
     syncOfficeActivity();
     updateOfficeActivity();
   }
@@ -497,28 +534,14 @@ export async function mount(container, context) {
   );
   closeBoardButton.onclick = () => closeBoard(true);
   root.onkeydown = (event) => {
-    if (event.key !== 'Escape' || board.hidden || event.isComposing) return;
+    if (event.key !== 'Escape' || event.isComposing) return;
+    const picking = floorPicker.isOpen();
+    if (!picking && board.hidden) return;
     event.preventDefault();
     event.stopPropagation();
-    closeBoard(true);
+    if (picking) floorPicker.close(true);
+    else closeBoard(true);
   };
-  floorPicker.onchange = () => {
-    floor = Number(floorPicker.value);
-    render();
-  };
-  const observer = new ResizeObserver(() => {
-    if (visible) updateOfficeActivity();
-  });
-  observer.observe(scene);
-  const stopVisibility = context.onVisibilityChange((next) => {
-    visible = next;
-    orbit?.setVisible(next);
-    if (!visible) officeActivity?.setVisible(false);
-  });
-  const stop = context.subscribe((next) => {
-    snapshot = next;
-    render();
-  });
   function showPicture() {
     orbit?.dispose();
     orbit = undefined;
@@ -529,39 +552,100 @@ export async function mount(container, context) {
     scene.removeAttribute('role');
     resetView.hidden = true;
     scene.style.setProperty('--zoom', zoom);
+    if (pictureReady) sceneNotice.hidden = true;
+  }
+
+  function setFloor(next) {
+    const changed = next.id !== floor.id;
+    floor = next;
+    floorPicker.update(floors, floor);
+    if (changed) {
+      if (board.contains(root.getRootNode().activeElement)) floorPicker.focus();
+      closeBoard(false);
+      officeActivity?.setMembers([]);
+      changeZoom(1);
+      orbit?.reset();
+      frame.scrollTo(0, 0);
+    }
+    if (frame.dataset.floor !== floor.kind) void loadScene(floor.kind);
     render();
   }
 
-  void (async () => {
+  async function loadScene(kind) {
+    sceneLoad?.abort();
+    sceneLoad = new AbortController();
+    const signal = AbortSignal.any([sceneLoad.signal, context.signal]);
+    const template = templates[kind];
+    frame.dataset.floor = kind;
+    sceneLayout = undefined;
+    pictureReady = false;
+    pictureProjection = undefined;
+    officeActivity?.dispose();
+    officeActivity = undefined;
+    showPicture();
+    signage.setAttribute('hidden', '');
+    picture?.remove();
+    const incoming = element('img', 'floor-image');
+    picture = incoming;
+    incoming.alt = translate(template.name);
+    incoming.draggable = false;
+    incoming.hidden = true;
+    scene.prepend(incoming);
+    sceneNotice.textContent = t('正在加载楼层…', 'Loading floor…');
+    sceneNotice.hidden = false;
+    incoming.src = resource('assets/' + template.asset + '.webp');
+    const imageTask = incoming.decode().then(
+      () => {
+        if (signal.aborted) return;
+        pictureReady = true;
+        incoming.hidden = false;
+        scene.style.setProperty('--scene-ratio', incoming.naturalWidth / incoming.naturalHeight);
+        if (!orbit) {
+          sceneNotice.hidden = true;
+        }
+        updateOfficeActivity();
+      },
+      () => {},
+    );
     try {
-      const metadata = await fetch(resource('assets/standard-scene.json'), {
-        signal: context.signal,
-      });
+      const metadataName = template.metadata ?? (template.asset + '-scene');
+      const metadata = await fetch(resource('assets/' + metadataName + '.json'), { signal });
       if (!metadata.ok) throw new Error('Office scene coordinates are unavailable');
-      const sceneLayout = await metadata.json();
-      context.signal.throwIfAborted();
-      projectPicture = lookupPictureProjection(sceneLayout);
-      officeActivity = createOfficeActivity(sceneLayout, updateOfficeActivity, {
-        reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
-      });
-      syncOfficeActivity();
+      const loaded = await metadata.json();
+      signal.throwIfAborted();
+      sceneLayout = loaded;
+      if (kind === 'office') {
+        pictureProjection = lookupPictureProjection(loaded);
+        officeActivity = createOfficeActivity(loaded, updateOfficeActivity, {
+          reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+        });
+        syncOfficeActivity();
+      }
       updateOfficeActivity();
       const { createOfficeOrbit } = await import('./orbit.mjs');
-      context.signal.throwIfAborted();
+      signal.throwIfAborted();
       const next = await createOfficeOrbit(scene, {
-        url: resource('assets/standard-floor.glb'),
-        layout: sceneLayout,
-        signal: context.signal,
+        url: resource('assets/' + template.asset + '.glb'),
+        layout: loaded,
+        signal,
         visible,
-        onRender: projectMarkers,
-        onLost: showPicture,
+        onRender(project) {
+          if (!signal.aborted && orbit) updateSceneOverlays(project);
+        },
+        onLost() {
+          if (signal.aborted) return;
+          showPicture();
+          render();
+          void showUnavailableIfNeeded();
+        },
       });
-      if (context.signal.aborted) {
+      if (signal.aborted) {
         next.dispose();
         return;
       }
       orbit = next;
       frame.dataset.orbit = 'true';
+      sceneNotice.hidden = true;
       resetView.hidden = false;
       scene.tabIndex = 0;
       scene.setAttribute('role', 'group');
@@ -576,13 +660,48 @@ export async function mount(container, context) {
       orbit.zoom(zoom);
       orbit.setVisible(visible);
     } catch (error) {
-      if (!context.signal.aborted) console.warn('Office 3D view unavailable', error);
+      if (signal.aborted) return;
+      console.warn('Office 3D view unavailable', error);
+      await showUnavailableIfNeeded();
     }
-  })();
+
+    async function showUnavailableIfNeeded() {
+      await imageTask;
+      if (!signal.aborted && !orbit && !pictureReady) {
+        sceneNotice.textContent = t('暂时无法显示楼层', 'Floor view is unavailable');
+        sceneNotice.hidden = false;
+      }
+    }
+  }
+
+  setFloor(floor);
+  const observer = new ResizeObserver(() => {
+    if (visible && !orbit) updateOfficeActivity();
+  });
+  observer.observe(scene);
+  const stopVisibility = context.onVisibilityChange((next) => {
+    visible = next;
+    orbit?.setVisible(next);
+    if (!visible) {
+      floorPicker.close();
+      officeActivity?.setVisible(false);
+    }
+  });
+  const stop = context.subscribe((next) => {
+    snapshot = next;
+    companyName = next.companyName ?? companyName;
+    if (next.rosterState === 'ready') {
+      floors = getFloors(next.members, layout.capacity);
+      setFloor(floors.find(({ id }) => id === floor.id) ?? floors.at(-2));
+    } else {
+      render();
+    }
+  });
 
   return () => {
     stop();
     stopVisibility();
+    sceneLoad.abort();
     officeActivity?.dispose();
     orbit?.dispose();
     observer.disconnect();

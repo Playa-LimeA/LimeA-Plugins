@@ -11,6 +11,7 @@
   width: 100%;
   min-height: 0;
   height: 100%;
+  container: office-panel / inline-size;
   overflow: auto;
   scrollbar-width: thin;
   color-scheme: light;
@@ -19,7 +20,7 @@
   font-family: inherit;
   font-size: 13px;
   line-height: 1.45;
-  padding: 6px 0 16px;
+  padding: var(--office-toolbar-top, 6px) 0 16px;
 }
 .office *,
 .office *::before,
@@ -29,16 +30,14 @@
 .office [hidden] {
   display: none !important;
 }
-.office button,
-.office select {
+.office button {
   color: inherit;
   font: inherit;
 }
 .office button {
   cursor: pointer;
 }
-.office button:focus-visible,
-.office select:focus-visible {
+.office button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -57,31 +56,176 @@
   gap: 8px;
 }
 .floor-bar {
-  flex-wrap: wrap;
+  min-height: var(--office-toolbar-height, 30px);
+  padding-inline-end: var(--office-toolbar-end, 16px);
 }
 .floor-bar,
 .members {
   flex: none;
-  padding-inline: 16px;
+  padding-inline-start: 16px;
+}
+.members {
+  padding-inline-end: 16px;
 }
 .floor-name {
-  gap: 9px;
   min-width: 0;
 }
-.floor-code {
-  font:
-    600 12px/1.1 ui-monospace,
-    monospace;
+.office .floor-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 30px;
+  margin-inline-start: -6px;
+  padding-inline: 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-weight: 650;
+}
+.floor-trigger:is(:hover, [aria-expanded='true']) {
+  background: var(--office-hover, #293e3114);
+}
+.floor-label-code {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--accent);
 }
-.floor-name strong {
-  font-size: 15px;
+.floor-trigger .floor-label-code,
+.floor-trigger .floor-chevron,
+.floor-tools {
+  flex: none;
 }
-.floor-name select {
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--canvas);
-  max-width: 100%;
+.floor-trigger .floor-label-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.floor-chevron,
+.floor-check {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.floor-popover {
+  position: fixed;
+  position-area: block-end span-inline-end;
+  position-try-fallbacks: flip-block, flip-inline;
+  inset: auto;
+  width: min(232px, calc(100vw - 32px));
+  max-height: min(336px, calc(100vh - 82px));
+  margin: 4px 0;
+  padding: 8px 12px 12px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px #25322a36;
+  background: #e9ebe4;
+  color: var(--ink);
+}
+.floor-building {
+  display: grid;
+}
+.building-roof,
+.building-shell {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.building-roof {
+  height: 14px;
+}
+.building-roof-face {
+  fill: #adb9ae;
+  stroke: #7c8c80;
+}
+.office .floor-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 47px;
+  margin-block-start: -9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  /* Match the SVG facade and flank where adjoining floors overlap. */
+  clip-path: polygon(0.5% 19.15%, 88.73% 19.15%, 100% 0, 100% 81%, 88.73% 100%, 0.5% 100%);
+  text-align: start;
+}
+.building-shell {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+.building-face {
+  fill: #f5f4ed;
+  stroke: #9da89c;
+}
+.building-side {
+  fill: #c5cfc5;
+  stroke: #8b9a8f;
+}
+.building-window {
+  fill: #9eafa2;
+}
+.floor-tile-copy {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px 1fr 12px;
+  align-items: center;
+  gap: 7px;
+  width: 88%;
+  height: 38px;
+  margin-block-start: 9px;
+  padding-inline: 10px;
+  font-size: 12px;
+}
+.floor-check {
+  visibility: hidden;
+}
+.floor-tile:hover .building-face {
+  fill: #dce8d8;
+}
+.floor-tile[aria-pressed='true'] {
+  color: #f7faf4;
+  font-weight: 650;
+}
+.floor-tile[aria-pressed='true'] .building-face {
+  fill: #315940;
+  stroke: #315940;
+}
+.floor-tile[aria-pressed='true'] .building-side {
+  fill: #597760;
+  stroke: #315940;
+}
+.floor-tile[aria-pressed='true'] .building-window {
+  fill: #abc4a9;
+}
+.floor-tile[aria-pressed='true'] .floor-label-code {
+  color: #d9e9d2;
+}
+.floor-tile[aria-pressed='true'] .floor-check {
+  visibility: visible;
+}
+.office .floor-tile:focus-visible {
+  outline: 0;
+}
+.floor-tile:focus-visible .floor-tile-copy {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+  border-radius: 4px;
+}
+.floor-tile[aria-pressed='true']:focus-visible .floor-tile-copy {
+  outline-color: #f7faf4;
 }
 .floor-tools {
   gap: 2px;
@@ -124,6 +268,24 @@
   color: var(--accent);
   font-size: 12px;
 }
+@container office-panel (max-width: 300px) {
+  .floor-bar {
+    gap: 4px;
+  }
+  .office .floor-trigger {
+    gap: 4px;
+  }
+  .floor-tools {
+    gap: 0;
+  }
+  .floor-tools button {
+    width: 22px;
+  }
+  .floor-tools .reset-view {
+    width: auto;
+    padding-inline: 4px;
+  }
+}
 .scene-frame {
   flex: 1 0 0;
   min-height: 180px;
@@ -153,8 +315,11 @@
   height: 100%;
   aspect-ratio: auto;
 }
-.scene-frame[data-orbit] :is(.floor-image, .signage) {
+.scene-frame[data-orbit] .floor-image {
   display: none;
+}
+.scene-frame[data-orbit] .signage {
+  z-index: 1;
 }
 .scene-frame[data-orbit] .scene {
   cursor: grab;
@@ -199,11 +364,21 @@
   font-weight: 700;
   fill: #e6e5d4;
 }
+.scene-notice {
+  position: absolute;
+  inset-inline: 16px;
+  inset-block-start: 50%;
+  margin: 0;
+  color: var(--subtle);
+  text-align: center;
+  pointer-events: none;
+}
 .markers {
   position: absolute;
   inset: 0;
 }
-.seat {
+.seat,
+.president-marker {
   position: absolute;
   transform: translate(-50%, -50%);
   padding: 0;
@@ -237,6 +412,38 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.president-marker {
+  pointer-events: none;
+}
+.president-face:empty {
+  position: relative;
+}
+.president-face:empty::before,
+.president-face:empty::after {
+  position: absolute;
+  content: '';
+  background: #f1f5ec;
+}
+.president-face:empty::before {
+  inset: 19% 34% 49%;
+  border-radius: 50%;
+}
+.president-face:empty::after {
+  inset: 56% 19% 4%;
+  border-radius: 50% 50% 30% 30%;
+}
+.president-label {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #f6f7f1;
+  color: #315940;
+  font: 650 10px/1.4 system-ui, sans-serif;
+  white-space: nowrap;
 }
 .dot {
   display: inline-block;

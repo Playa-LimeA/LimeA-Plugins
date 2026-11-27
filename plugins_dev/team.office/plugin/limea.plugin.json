@@ -1,11 +1,11 @@
 {
   "id": "team.office",
   "name": "团队办公室",
-  "version": "0.3.2",
+  "version": "0.4.5",
   "apiVersion": 15,
   "hostVersion": ">=0.1.0 <1",
   "entry": "backend.mjs",
-  "permissions": [],
+  "permissions": ["profile:avatar"],
   "panels": [
     {
       "id": "team.office.floor",
@@ -18,12 +18,20 @@
   "resources": [
     "office.css",
     "activity.mjs",
+    "floor-picker.mjs",
+    "floors.mjs",
     "office-routes.mjs",
     "orbit.mjs",
     "vendor/three-office.mjs",
     "assets/standard-floor.glb",
     "assets/standard-scene.json",
     "assets/standard-floor.webp",
-    "assets/standard-seats.json"
+    "assets/standard-seats.json",
+    "assets/lobby.glb",
+    "assets/lobby-scene.json",
+    "assets/lobby.webp",
+    "assets/executive.glb",
+    "assets/executive-scene.json",
+    "assets/executive.webp"
   ]
 }
