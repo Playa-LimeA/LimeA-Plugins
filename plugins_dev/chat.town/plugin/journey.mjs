@@ -1,7 +1,10 @@
 import { locations } from './locations.mjs';
 import { navigation } from './navigation.mjs';
 import { findWalk, getPortal, nextStop } from './routes.mjs';
-import { activityDwell, calendarDay, chooseRoutineActivity, departureDelay, homeSchedule, makePreferences } from './routine.mjs';
+import {
+  activityDwell, calendarDay, chooseRoutineActivity, chooseStreetStop, departureDelay,
+  homeSchedule, makePreferences,
+} from './routine.mjs';
 import { activityCatalog, isTownState, walkingActivity } from './town-state.mjs';
 
 const walkingSpeed = 3.5;
@@ -36,21 +39,35 @@ function exitOfCrossing(from, to) {
   }
 }
 
+function sameResidence(first, second) {
+  return first?.characterId === second?.characterId && first?.generation === second?.generation;
+}
+
 function sameGoal(first, second) {
   return first?.scene === second.scene && first.point === second.point &&
-    first.activity === second.activity;
+    first.activity === second.activity && sameResidence(first.residence, second.residence);
+}
+
+function returnHome() {
+  return { scene: 'home', point: locations.home.visit, manual: true };
 }
 
 export function makeTownJourney(
   initial,
   now,
-  { preference = makePreferences('town'), checkpoint, restart = false } = {},
+  {
+    preference = makePreferences('town'),
+    checkpoint,
+    restart = false,
+    residenceStatus = () => 'not_resident',
+  } = {},
 ) {
   const saved = isTownState(initial) ? initial : null;
   const time = timestamp(now);
   let clock = checkpoint?.clock ?? time;
   let scene = checkpoint?.scene ?? saved?.scene ?? 'home';
   let point = checkpoint?.point ?? saved?.point ?? locations.home.visit;
+  let residence = scene === 'home' ? checkpoint?.residence : undefined;
   let paused = checkpoint?.paused ?? (initial?.paused === true);
   let remaining = checkpoint?.remaining ?? departureDelay;
   let nextAt = checkpoint ? checkpoint.nextAt : paused ? null : clock + remaining;
@@ -77,7 +94,10 @@ export function makeTownJourney(
   function selectGoal(at) {
     const activity = chooseRoutineActivity({ preference, at, scene, recent, sequence, breakfastDay });
     const { scene: destination, point: arrival } = activityCatalog[activity];
-    return { scene: destination, point: arrival, activity, until: homeSchedule(at, preference).endsAt };
+    const until = homeSchedule(at, preference).endsAt;
+    const streetStop = destination !== 'home' && chooseStreetStop({ preference, at, recent, sequence });
+    if (streetStop) return { scene: 'street_corner', point: streetStop, until };
+    return { scene: destination, point: arrival, activity, until };
   }
 
   function startNext(at) {
@@ -95,11 +115,14 @@ export function makeTownJourney(
     }
 
     while (true) {
-      const step = crosswalkExit
-        ? { point: crosswalkExit }
-        : scene === goal.scene
-          ? { point: goal.point }
-          : nextStop(locations, scene, goal.scene);
+      let step;
+      if (crosswalkExit) {
+        step = { point: crosswalkExit };
+      } else if (scene === 'home' && goal.scene === 'home' && !sameResidence(residence, goal.residence)) {
+        step = nextStop(locations, scene, 'street_corner');
+      } else {
+        step = scene === goal.scene ? { point: goal.point } : nextStop(locations, scene, goal.scene);
+      }
       const [via] = findWalk(locations[scene].edges, point, step.point);
       if (via) {
         if (!crosswalkExit && walkingActivity(scene, point, via) === 'crossing') {
@@ -125,8 +148,39 @@ export function makeTownJourney(
         sequence++;
         return;
       }
+      if (step.next === 'home' && goal.residence && residenceStatus(goal.residence) !== 'at_home') {
+        goal = returnHome();
+        continue;
+      }
       point = getPortal(markers.get(scene), step.point, step.next);
       scene = step.next;
+      residence = scene === 'home' ? goal.residence : undefined;
+    }
+  }
+
+  function reconcileResidences(at) {
+    const retired = (home) => home && residenceStatus(home) === 'not_resident';
+    const currentRetired = retired(residence);
+    const goalRetired = retired(goal?.residence);
+    const requestRetired = retired(requested?.residence);
+    if (!currentRetired && !goalRetired && !requestRetired) return;
+
+    if (requestRetired) requested = undefined;
+    if (goalRetired) {
+      goal = returnHome();
+      stay = undefined;
+    }
+    if (currentRetired) {
+      point = getPortal(markers.get('home'), 'exit_to_street', 'street_corner');
+      scene = 'street_corner';
+      residence = undefined;
+      motion = undefined;
+      stay = undefined;
+      goal ??= returnHome();
+    }
+    if (!motion && (currentRetired || goalRetired)) {
+      remaining = 0;
+      if (!paused) nextAt = at;
     }
   }
 
@@ -143,13 +197,14 @@ export function makeTownJourney(
 
   function advance(value) {
     const now = Math.max(timestamp(value), clock);
+    reconcileResidences(now);
     const through = Math.min(now, clock + maxCatchUp);
     advanceThrough(through);
     const skipped = now - through;
     if (skipped && nextAt !== null) {
       // Carry an unfinished safe route forward from the confirmed point. An expired stay
       // or routine is reconsidered at the current local time without simulating missed hours.
-      if (motion && (crosswalkExit || goal.manual || goal.until > now)) {
+      if (motion && (crosswalkExit || goal?.manual || goal?.until > now)) {
         nextAt += skipped;
         motion.startsAt += skipped;
         motion.endsAt += skipped;
@@ -169,6 +224,8 @@ export function makeTownJourney(
       point,
       activity: motion ? walkingActivity(scene, point, motion.to) : stay?.activity ?? 'idle',
       ...(motion ? { destination: goal.scene, motion: { ...motion } } : {}),
+      ...(residence ? { residence } : {}),
+      ...(motion && goal.residence ? { destinationResidence: goal.residence } : {}),
       paused,
       nextAt,
     };
@@ -210,7 +267,7 @@ export function makeTownJourney(
     },
     checkpoint() {
       return {
-        version: 1, clock, scene, point, paused, remaining, nextAt, motion,
+        version: 1, clock, scene, point, residence, paused, remaining, nextAt, motion,
         crosswalkExit, goal, requested, stay, sequence, recent, breakfastDay,
       };
     },

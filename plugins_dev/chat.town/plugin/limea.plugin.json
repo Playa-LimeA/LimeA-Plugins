@@ -1,21 +1,21 @@
 {
   "id": "chat.town",
   "name": "陪伴小镇",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "apiVersion": 13,
   "hostVersion": ">=0.1.1 <1",
   "entry": "backend.mjs",
   "permissions": ["character:avatar", "character:town-state", "character:town-residents"],
   "page": {
     "entry": "page.mjs",
-    "description": "给喜欢的角色一个在小镇生活的家。她们会自行作息，出门逛街或在家休息。",
+    "description": "入住角色各有自己的家，在同一个小镇生活、出门逛街，也能去其他住客家做客。",
     "author": "Playa"
   },
   "tools": [
     {
       "id": "list_residents",
       "name": "列出小镇住客",
-      "description": "List the characters currently living in Companion Town. Use to answer who lives here and obtain a resident ID for a lookup.",
+      "description": "List the characters currently living in Companion Town. Use to answer who lives here or obtain a resident ID to look up or visit.",
       "access": "read",
       "modes": [
         "chat"
@@ -76,7 +76,7 @@
     {
       "id": "go_to",
       "name": "前往小镇地点",
-      "description": "Arrange for yourself to walk to a verified location in town. Use when you have decided to go somewhere, not when someone only asks where you are. A return value of accepted means the trip has been arranged, not that you have arrived.",
+      "description": "Arrange for yourself to walk to a verified location in town. Home means your own home. Use when you have decided to go somewhere, not when someone only asks where you are. A return value of accepted means the trip has been arranged, not that you have arrived.",
       "access": "local",
       "modes": [
         "chat"
@@ -100,6 +100,29 @@
         "additionalProperties": false,
         "required": [
           "location"
+        ]
+      }
+    },
+    {
+      "id": "visit_resident",
+      "name": "去住客家做客",
+      "description": "Arrange for yourself to visit another resident at their home. Use a resident ID from list_residents. A visit can be arranged when the host is home. A return value of accepted means the trip has been arranged; confirm arrival using your current town state.",
+      "access": "local",
+      "modes": [
+        "chat"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "resident_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "resident_id"
         ]
       }
     },
@@ -145,6 +168,7 @@
     "town-state.mjs",
     "town-tools.mjs",
     "town-map.mjs",
+    "town-status-card.mjs",
     "viewer.mjs",
     "visitor.mjs",
     "vendor/three-town.mjs",

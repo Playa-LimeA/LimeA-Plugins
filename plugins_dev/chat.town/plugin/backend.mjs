@@ -53,19 +53,28 @@ function json(value) {
   }
 }
 
-function makeRole(characterId, generation, row, now) {
+function savedState(row) {
   const state = row && {
     scene: row.scene,
     point: row.point,
     activity: row.activity,
     ...(row.destination === null ? {} : { destination: row.destination }),
   };
-  const stored = isTownState(state) ? json(row.journey_json) : null;
-  const checkpoint = stored?.version === 1 && stored.scene === state.scene && stored.point === state.point
+  return isTownState(state) ? state : null;
+}
+
+function savedCheckpoint(row, state) {
+  const stored = state ? json(row.journey_json) : null;
+  return stored?.version === 1 && stored.scene === state.scene && stored.point === state.point
     ? stored
     : null;
+}
+
+function makeRole(characterId, generation, row, now, residenceStatus) {
+  const state = savedState(row);
+  const checkpoint = savedCheckpoint(row, state);
   const preference = json(row?.preference_json) ?? makePreferences(characterId);
-  const journey = makeTownJourney(state, now, { preference, checkpoint, restart: true });
+  const journey = makeTownJourney(state, now, { preference, checkpoint, restart: true, residenceStatus });
   const snapshot = journey.read(now);
   return { generation, preference, checkpoint: journey.checkpoint(), snapshot, updatedAt: now };
 }
@@ -87,33 +96,92 @@ function roleStatement(characterId, role, mutationId = null) {
 }
 
 function projectState(role) {
-  const { scene, point, activity, destination, paused } = role.snapshot;
+  const { scene, point, activity, destination, destinationResidence, paused } = role.snapshot;
   return {
     scene, point, activity,
-    ...(destination ? { destination } : {}),
+    ...(destination && !(destination === scene && destinationResidence) ? { destination } : {}),
     updatedAt: role.updatedAt,
     residentGeneration: role.generation,
     paused,
   };
 }
 
-function projectView(role) {
-  const { motion } = role.snapshot;
-  return { ...projectState(role), ...(motion ? { motion } : {}) };
+function residenceIdentity(residence, names) {
+  const resident = names.get(residence?.characterId);
+  return resident && resident.generation === residence.generation
+    ? { characterId: residence.characterId, name: resident.name }
+    : undefined;
 }
 
-function toolState(role) {
-  const state = projectState(role);
-  delete state.residentGeneration;
+function projectView(role, names) {
+  const { motion } = role.snapshot;
+  return {
+    ...projectState(role),
+    ...(names ? projectResidences(role, names) : {}),
+    ...(motion ? { motion } : {}),
+  };
+}
+
+function projectResidences(role, names) {
+  const residence = residenceIdentity(role.snapshot.residence, names);
+  const destinationResidence = residenceIdentity(role.snapshot.destinationResidence, names);
+  return {
+    ...(residence ? { residence } : {}),
+    ...(destinationResidence ? { destinationResidence } : {}),
+  };
+}
+
+function projectChatState(role) {
+  const { residence, destinationResidence } = role.snapshot;
+  return {
+    ...projectState(role),
+    ...(residence ? { homeOwnerId: residence.characterId } : {}),
+    ...(destinationResidence ? { destinationHomeOwnerId: destinationResidence.characterId } : {}),
+  };
+}
+
+function toolState(role, names) {
+  const { residentGeneration: _generation, ...state } = projectState(role);
+  const housing = projectResidences(role, names);
+  const host = housing.residence?.name;
+  const visiting = host && state.activity === 'idle' && role.checkpoint.stay;
   const phase = state.paused ? 'paused'
     : state.activity === 'crossing' ? 'crossing'
       : state.activity === 'walking' ? 'traveling'
-        : state.activity === 'idle' ? 'staying' : 'doing';
+        : state.activity === 'idle' && !visiting ? 'staying' : 'doing';
   const next = role.checkpoint.requested ?? (!role.checkpoint.stay && role.checkpoint.goal);
-  return { ...state, location: locations[state.scene].name, phase, ...(next ? { next: {
-    scene: next.scene, ...(next.activity ? { activity: next.activity } : {}),
-  } } : {}) };
+  const nextResidence = next && residenceIdentity(next.residence, names);
+  return {
+    ...state,
+    ...housing,
+    location: host ? { zh: `${host}家`, en: `${host}’s home` } : locations[state.scene].name,
+    ...(visiting ? { activityName: { zh: '正在做客', en: 'Visiting a resident' } } : {}),
+    phase,
+    ...(next ? { next: {
+      scene: next.scene,
+      ...(next.activity ? { activity: next.activity } : {}),
+      ...(nextResidence ? { residence: nextResidence } : {}),
+    } } : {}),
+  };
 }
+
+function residenceStatusIn(roles, { characterId, generation }) {
+  const host = roles.get(characterId);
+  if (!host || host.generation !== generation) return 'not_resident';
+  return host.snapshot.scene === 'home' && !host.snapshot.residence ? 'at_home' : 'away';
+}
+
+function sameResidence(a, b) {
+  return a?.characterId === b?.characterId && a?.generation === b?.generation;
+}
+
+function hasEvictedResidence(role, roster) {
+  const { residence, goal, requested } = role.checkpoint;
+  return [residence, goal?.residence, requested?.residence]
+    .some((reference) => reference && residenceStatusIn(roster, reference) === 'not_resident');
+}
+
+const nameCacheMs = 5000;
 
 export async function apply(context) {
   const db = await context.storage.openDatabase({ name: 'town', migrations });
@@ -126,6 +194,7 @@ export async function apply(context) {
   let scheduledFor;
   let ticking = false;
   let unsubscribe;
+  let nameCache;
 
   context.onDispose(() => {
     disposed = true;
@@ -150,18 +219,46 @@ export async function apply(context) {
     return ids.length && directory ? directory.list(ids) : [];
   }
 
+  async function residentNames() {
+    if (nameCache?.expiresAt > Date.now()) return nameCache.names;
+    const names = new Map(
+      (await residents()).map(({ characterId, name }) => [
+        characterId, { name, generation: roles.get(characterId).generation },
+      ]),
+    );
+    nameCache = { names, expiresAt: Date.now() + nameCacheMs };
+    return names;
+  }
+
   async function roster() {
     return { revision, residents: await residents() };
   }
 
   async function loadResidents() {
     roles.clear();
+    nameCache = undefined;
     if (!directory) return;
     const rows = await db.all('SELECT * FROM town_state WHERE resident_generation IS NOT NULL');
     const now = Date.now();
+    // Restore against a complete saved roster, regardless of database row order.
+    const savedRoster = new Map(rows.map((row) => {
+      const state = savedState(row);
+      const checkpoint = savedCheckpoint(row, state);
+      return [row.character_id, {
+        generation: row.resident_generation,
+        snapshot: { scene: state?.scene ?? 'home', residence: checkpoint?.residence },
+      }];
+    }));
     for (const row of rows) {
-      const role = makeRole(row.character_id, row.resident_generation, row, now);
+      const role = makeRole(
+        row.character_id, row.resident_generation, row, now,
+        (reference) => residenceStatusIn(savedRoster, reference),
+      );
       roles.set(row.character_id, role);
+    }
+    for (const [id, role] of roles) {
+      if (!hasEvictedResidence(role, roles)) continue;
+      roles.set(id, candidate(role, now).next);
     }
   }
 
@@ -176,6 +273,14 @@ export async function apply(context) {
     const generation = revision + 1;
     const mutation = randomUUID();
     const incoming = added.map((id) => [id, makeRole(id, generation, null, now)]);
+    const remaining = new Map([...roles].filter(([id]) => present.has(id)));
+    for (const [id, role] of incoming) remaining.set(id, role);
+    const reconciled = [];
+    for (const [id, role] of remaining) {
+      if (!hasEvictedResidence(role, remaining)) continue;
+      const { next } = candidate(role, now, undefined, remaining);
+      reconciled.push([id, next]);
+    }
     const [compare] = await db.transaction([
       {
         sql: 'UPDATE town_roster SET revision=?, mutation_id=? WHERE singleton=1 AND revision=?',
@@ -188,6 +293,7 @@ export async function apply(context) {
         params: [JSON.stringify(removed), mutation],
       },
       ...incoming.map(([id, role]) => roleStatement(id, role, mutation)),
+      ...reconciled.map(([id, role]) => roleStatement(id, role, mutation)),
     ]);
 
     if (!Number(compare.changes)) {
@@ -197,14 +303,20 @@ export async function apply(context) {
       return { conflict: true, ...(await roster()) };
     }
     revision = generation;
+    nameCache = undefined;
     for (const id of removed) roles.delete(id);
     for (const [id, role] of incoming) roles.set(id, role);
+    for (const [id, role] of reconciled) roles.set(id, role);
     schedule();
     return roster();
   }
 
-  function candidate(role, now, change) {
-    const journey = makeTownJourney(null, now, { preference: role.preference, checkpoint: role.checkpoint });
+  function candidate(role, now, change, roster = roles) {
+    const journey = makeTownJourney(null, now, {
+      preference: role.preference,
+      checkpoint: role.checkpoint,
+      residenceStatus: (reference) => residenceStatusIn(roster, reference),
+    });
     const decision = change ? change(journey, now) : null;
     const snapshot = decision?.snapshot ?? journey.read(now);
     return {
@@ -269,7 +381,7 @@ export async function apply(context) {
       (await directory.list([id])).some(({ characterId }) => characterId === id);
   }
 
-  async function action(tool, goal) {
+  async function action(tool, requested) {
     return enqueue(async () => {
       tool.signal?.throwIfAborted();
       const role = actor(tool);
@@ -277,23 +389,44 @@ export async function apply(context) {
       if (typeof tool.executionId !== 'string' || !tool.executionId) return { status: 'invalid_execution' };
       const id = tool.characterId;
       const key = [id, role.generation, tool.executionId];
-      const request = JSON.stringify(goal);
+      const request = JSON.stringify(requested);
       const receipt = await db.get(
         'SELECT request, response FROM town_receipts WHERE character_id=? AND generation=? AND execution_id=?',
         key,
       );
       if (receipt) return receipt.request === request ? JSON.parse(receipt.response) : { status: 'conflict' };
 
-      let plan;
-      try {
-        plan = candidate(role, Date.now(), (journey, now) => journey.setAction(goal, now));
-      } catch (error) {
-        if (!String(error?.message).startsWith('No walking route') &&
-            !String(error?.message).includes('is disconnected')) throw error;
+      let goal = requested;
+      let rejection;
+      if (Object.hasOwn(requested, 'resident_id')) {
+        const hostId = requested.resident_id;
+        const host = roles.get(hostId);
+        if (hostId === id) rejection = 'invalid_host';
+        else if (!host || !(await exists(hostId))) rejection = 'host_not_resident';
+        else {
+          const residence = { characterId: hostId, generation: host.generation };
+          goal = { scene: 'home', point: 'living_entry', residence };
+          if (residenceStatusIn(roles, residence) !== 'at_home') rejection = 'host_away';
+        }
       }
-      const response = plan
-        ? { status: plan.status, current: toolState(plan.next), target: goal }
-        : { status: 'unreachable', current: toolState(role), target: goal };
+
+      let plan;
+      if (!rejection) {
+        try {
+          plan = candidate(role, Date.now(), (journey, now) => journey.setAction(goal, now));
+        } catch (error) {
+          if (!String(error?.message).startsWith('No walking route') &&
+              !String(error?.message).includes('is disconnected')) throw error;
+        }
+      }
+      const names = await residentNames();
+      const { residence, ...target } = goal;
+      const host = residenceIdentity(residence, names);
+      const response = {
+        status: plan?.status ?? rejection ?? 'unreachable',
+        current: toolState(plan?.next ?? role, names),
+        target: host ? { ...target, residence: host } : target,
+      };
       const writes = plan && plan.status !== 'paused' ? [roleStatement(id, plan.next)] : [];
       tool.signal?.throwIfAborted();
       await db.transaction([
@@ -312,6 +445,35 @@ export async function apply(context) {
   async function pruneDeleted() {
     const known = new Set((await residents()).map(({ characterId }) => characterId));
     if (known.size !== roles.size) await replaceRoster(revision, [...known]);
+  }
+
+  async function readWindow(characterId, selectedScene) {
+    const role = roles.get(characterId);
+    const scene = selectedScene ?? role?.snapshot.scene ?? 'home';
+    const names = await residentNames();
+    // Explicitly browsing Home means the selected character's own house. Following
+    // a character in a house follows their physical instance, including a visit.
+    const home = scene === 'home' && role
+      ? (!selectedScene && role.snapshot.residence) || { characterId, generation: role.generation }
+      : undefined;
+    const residence = residenceIdentity(home, names);
+    const occupants = [];
+    for (const [occupantId, occupant] of roles) {
+      const { scene: current, point, motion, residence: visited } = occupant.snapshot;
+      if (current !== scene) continue;
+      if (scene === 'home' && (!home || !sameResidence(
+        home, visited ?? { characterId: occupantId, generation: occupant.generation },
+      ))) continue;
+      const name = names.get(occupantId)?.name;
+      if (typeof name !== 'string') continue;
+      occupants.push({ characterId: occupantId, name, point, ...(motion ? { motion } : {}) });
+    }
+    return {
+      resident: role ? projectView(role, names) : null,
+      scene,
+      ...(residence ? { residence } : {}),
+      occupants,
+    };
   }
 
   if (directory) {
@@ -352,12 +514,28 @@ export async function apply(context) {
       return role ? projectState(role) : null;
     });
   });
+  context.commands.register('read-town-chat-state', (payload) => {
+    const characterId = checkCharacter(payload);
+    return enqueue(() => {
+      const role = roles.get(characterId);
+      return role ? projectChatState(role) : null;
+    });
+  });
   context.commands.register('read-town-view', (payload) => {
     const characterId = checkCharacter(payload);
     return enqueue(() => {
       const role = roles.get(characterId);
       return role ? projectView(role) : null;
     });
+  });
+  context.commands.register('read-town-window', (payload) => {
+    if (
+      !payload || typeof payload !== 'object' || Array.isArray(payload) ||
+      (payload.characterId !== null && !validCharacter(payload.characterId)) ||
+      (payload.scene !== undefined && (typeof payload.scene !== 'string' || !Object.hasOwn(locations, payload.scene))) ||
+      Object.keys(payload).some((key) => key !== 'characterId' && key !== 'scene')
+    ) throw new Error('invalid-town-window');
+    return enqueue(() => readWindow(payload.characterId, payload.scene));
   });
   context.commands.register('set-town-paused', (payload) => {
     const characterId = checkCharacter(payload, 'paused');
@@ -384,7 +562,7 @@ export async function apply(context) {
     list: residents,
     residentState: async (id) => {
       const role = roles.get(id);
-      return role && await exists(id) ? toolState(role) : null;
+      return role && await exists(id) ? toolState(role, await residentNames()) : null;
     },
     action,
   });

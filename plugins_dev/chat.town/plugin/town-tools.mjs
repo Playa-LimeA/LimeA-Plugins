@@ -33,6 +33,11 @@ export function registerTownTools(registry, town) {
         typeof input.location !== 'string' || !Object.hasOwn(locations, input.location)) return invalid;
     return town.action(context, { scene: input.location, point: locations[input.location].visit });
   });
+  registry.register('visit_resident', (input, context) => {
+    if (!inputKeys(input, ['resident_id']) || typeof input.resident_id !== 'string' ||
+        !input.resident_id.trim() || input.resident_id.length > 128) return invalid;
+    return town.action(context, { resident_id: input.resident_id });
+  });
   registry.register('do_activity', (input, context) => {
     if (!inputKeys(input, ['activity']) ||
         typeof input.activity !== 'string' || !Object.hasOwn(activityCatalog, input.activity)) return invalid;

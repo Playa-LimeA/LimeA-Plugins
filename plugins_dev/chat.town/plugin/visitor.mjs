@@ -1,6 +1,6 @@
 import { Vector3 } from './vendor/three-town.mjs';
 
-export function makeVisitor(viewport, context) {
+export function makeVisitor(viewport, fallbackName) {
   const marker = document.createElement('span');
   marker.className = 'town-role';
   marker.setAttribute('role', 'img');
@@ -11,17 +11,18 @@ export function makeVisitor(viewport, context) {
   marker.append(face);
   viewport.append(marker);
 
-  const fallbackName = context.language.startsWith('zh') ? '角色' : 'Visitor';
   let displayName;
   let avatarSource;
 
-  function setCharacter({ name, avatar }) {
+  function setCharacter({ name, avatar, selected }) {
+    marker.classList.toggle('town-role-selected', selected);
     const nextName = name?.trim() || fallbackName;
     const nextAvatar = avatar || null;
     if (displayName === nextName && avatarSource === nextAvatar) return;
     displayName = nextName;
     avatarSource = nextAvatar;
     marker.setAttribute('aria-label', displayName);
+    marker.title = displayName;
     face.textContent = Array.from(displayName)[0];
     if (!avatarSource) return;
 
@@ -41,29 +42,29 @@ export function makeVisitor(viewport, context) {
     image.src = avatarSource;
   }
 
-  setCharacter({ name: context.characterName });
-  const unsubscribe = context.onCharacterChange?.(setCharacter);
   const position = new Vector3();
   const projected = new Vector3();
 
   return {
     position,
+    setCharacter,
     hide() {
       marker.hidden = true;
     },
     project(camera) {
-      if (!context.onCharacterChange) setCharacter({ name: context.characterName });
       projected.copy(position);
       projected.y += 0.12;
       projected.project(camera);
-      marker.hidden =
-        Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1 || Math.abs(projected.z) > 1;
-      if (marker.hidden) return;
-      marker.style.left = ((projected.x + 1) * 50) + '%';
-      marker.style.top = ((1 - projected.y) * 50) + '%';
+      return Math.abs(projected.x) <= 1 && Math.abs(projected.y) <= 1 && Math.abs(projected.z) <= 1
+        ? projected
+        : null;
+    },
+    show(x, y) {
+      marker.hidden = false;
+      marker.style.left = `${x}px`;
+      marker.style.top = `${y}px`;
     },
     dispose() {
-      unsubscribe?.();
       marker.remove();
     },
   };

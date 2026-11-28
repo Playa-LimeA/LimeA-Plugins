@@ -70,9 +70,9 @@ export function chooseRoutineActivity({ preference, at, scene, recent, sequence,
   const outside = recent.filter((item) => item.scene !== 'home').length;
   const canGoOut = atHome || (outside < 2 && scene !== 'bakery');
   const outdoors = morning
-    ? ['browsing_bread']
+    ? ['browsing_bread', 'watching_water']
     : evening
-      ? ['browsing_produce', 'browsing_bread']
+      ? ['browsing_produce', 'browsing_bread', ...(hour < 20 ? ['watching_water'] : [])]
       : ['watching_water', 'browsing_cafe', 'browsing_produce', 'browsing_furniture', 'browsing_bread'];
   const indoors = morning
     ? ['watching_street', 'resting_sofa', ...(!hadBreakfast ? ['having_breakfast'] : [])]
@@ -86,9 +86,10 @@ export function chooseRoutineActivity({ preference, at, scene, recent, sequence,
   const candidates = (chooseOutdoors ? outdoors : indoors).filter((activity) => Object.hasOwn(activityCatalog, activity));
   const weights = candidates.map((activity) => {
     const favor = 1 + (hash(`${preference.seed}:${activity}`) % 8) / 4;
+    const publicStop = activity === 'watching_water' ? 1.35 : 1;
     const repeat = recent.findIndex((item) => item.activity === activity);
     const samePlace = recent.slice(0, 2).findIndex((item) => item.scene === activityCatalog[activity].scene);
-    return favor * (repeat < 0 ? 1 : 0.25 + repeat * 0.15) *
+    return publicStop * favor * (repeat < 0 ? 1 : 0.25 + repeat * 0.15) *
       (samePlace < 0 ? 1 : 0.5 + samePlace * 0.1);
   });
   let choice = roll(preference, at, sequence, 'activity') * weights.reduce((sum, value) => sum + value, 0);
@@ -97,6 +98,20 @@ export function chooseRoutineActivity({ preference, at, scene, recent, sequence,
     choice -= weight;
   }
   return candidates.at(-1);
+}
+
+const streetStops = ['cafe_promenade_west', 'east_sidewalk_junction'];
+
+export function chooseStreetStop({ preference, at, recent, sequence }) {
+  const hour = new Date(at).getHours();
+  if (
+    hour < 8 ||
+    hour >= 20 ||
+    recent.slice(0, 2).some(({ scene }) => scene === 'street_corner') ||
+    roll(preference, at, sequence, 'street stop') >= 0.22
+  ) return undefined;
+  const index = Math.floor(roll(preference, at, sequence, 'street point') * streetStops.length);
+  return streetStops[index];
 }
 
 const dwellMinutes = {

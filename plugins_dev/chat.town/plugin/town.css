@@ -20,7 +20,9 @@
 .town-viewport {
   position: absolute;
   inset: 0;
+  isolation: isolate;
   overflow: hidden;
+  cursor: grab;
 }
 
 .town-viewport canvas {
@@ -29,11 +31,10 @@
   height: 100%;
   position: absolute;
   inset: 0;
-  cursor: grab;
   touch-action: none;
 }
 
-.town-viewport canvas:active {
+.town-viewport:active {
   cursor: grabbing;
 }
 
@@ -54,8 +55,7 @@
 
 .town-location,
 .town-reset,
-.town-map-toggle,
-.town-footer {
+.town-map-toggle {
   border: 1px solid var(--town-border);
   background: var(--town-overlay);
   box-shadow: 0 2px 8px #382b1b18;
@@ -63,12 +63,15 @@
 
 .town-location {
   min-width: 0;
+  overflow: hidden;
   margin: 0;
   padding: 7px 10px;
   border-radius: 8px;
   font-size: 15px;
   font-weight: 650;
   line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .town button {
@@ -140,7 +143,7 @@
   place-items: center;
   box-sizing: border-box;
   overflow: auto;
-  padding: 62px var(--town-inset) 88px;
+  padding: 62px var(--town-inset) var(--town-card-reserve, 88px);
   background: #eee5d4;
   scrollbar-color: #ac9e87 #eee5d4;
 }
@@ -212,38 +215,200 @@
 }
 
 .town-footer {
-  inset: auto var(--town-inset) var(--town-inset);
-  width: fit-content;
-  max-width: calc(100% - 2 * var(--town-inset));
-  box-sizing: border-box;
-  padding: 7px 8px 8px;
-  border-radius: 10px;
-}
-
-.town-status-row {
-  display: flex;
+  --town-card-muted: #526157;
+  inset-block-end: var(--town-inset);
+  inset-inline-start: var(--town-inset);
+  display: grid;
+  align-content: start;
   gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
+  width: min(292px, calc(100% - 2 * var(--town-inset)));
+  max-block-size: 46%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  scrollbar-color: #a4ab9a #f6f4eb;
+  padding: 11px 12px;
+  border: 1px solid #4a574632;
+  border-radius: 12px;
+  background: #f6f4eb;
+  box-shadow: 0 6px 17px #32332624;
 }
 
-.town-status {
+.town-card-header,
+.town-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.town-card-portrait {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--town-selected);
+  color: #fff9eb;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.town-card-portrait img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.town-card-identity {
   flex: 1;
+  min-width: 0;
+}
+
+.town-card-name {
   margin: 0;
-  padding-inline: 3px;
-  font-size: 12px;
-  line-height: 1.4;
+  overflow: hidden;
+  color: var(--town-ink);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.town-card-phase {
+  --town-card-dot: #858779;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-block-start: 2px;
+  color: var(--town-card-muted);
+  font-size: 11px;
+  line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.town-card-phase::before {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--town-card-dot);
+  content: '';
+}
+
+.town-card-phase[data-phase='active'],
+.town-card-phase[data-phase='staying'] {
+  --town-card-dot: #6e8c5c;
+}
+
+.town-card-phase[data-phase='moving'] {
+  --town-card-dot: #a87942;
+}
+
+.town-card-phase[data-phase='resting'] {
+  --town-card-dot: #71858a;
+}
+
+.town-card-phase[data-phase='paused'] {
+  --town-card-dot: #907756;
+}
+
+.town-card-collapse {
+  display: grid;
+  flex: none;
+  place-items: center;
+  align-self: flex-start;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+}
+
+.town-card-collapse:hover {
+  background: var(--town-hover);
+}
+
+.town-card-collapse svg {
+  width: 16px;
+  height: 16px;
+}
+
+.town-card-collapse[aria-expanded='false'] svg {
+  transform: rotate(180deg);
+}
+
+.town-card-body {
+  padding-block-start: 7px;
+  border-block-start: 1px solid #4a574624;
+}
+
+.town-card-fields {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 11px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.town-card-fields dt,
+.town-card-notice {
+  color: var(--town-card-muted);
+}
+
+.town-card-fields dd,
+.town-card-notice {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.town-card-notice {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.town-card-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.town-card-actions button {
+  min-height: 26px;
+}
+
+.town-card-header[hidden],
+.town-card-portrait img[hidden],
+.town-card-phase[hidden],
+.town-card-body[hidden],
+.town-card-fields[hidden],
+.town-card-fields > [hidden],
+.town-card-notice[hidden],
+.town-card-actions[hidden] {
+  display: none;
 }
 
 .town-role {
   position: absolute;
   display: block;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   transform: translate(-50%, calc(-100% - 5px));
   filter: drop-shadow(0 2px 4px #30291e59);
-  pointer-events: none;
+  user-select: none;
+}
+
+.town-role-selected {
+  z-index: 1;
+  width: 42px;
+  height: 42px;
 }
 
 .town-role[hidden],
@@ -280,10 +445,15 @@
   border: 2px solid var(--town-paper);
   border-radius: 50%;
   color: #fffaf1;
-  background: var(--town-selected);
-  font-size: 18px;
+  background: #6d634f;
+  font-size: 15px;
   font-weight: 650;
   line-height: 1;
+}
+
+.town-role-selected .town-role-face {
+  background: var(--town-selected);
+  font-size: 18px;
 }
 
 .town-role-face img {

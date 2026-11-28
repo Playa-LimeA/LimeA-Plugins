@@ -17,6 +17,12 @@ import { makeVisitor } from './visitor.mjs';
 const diagonal = new Vector3(0.84, 0.97, 1.34).normalize();
 const streetDiagonal = new Vector3(-0.66, 1.03, 1.36).normalize();
 const up = new Vector3(0, 1, 0);
+const markerSpacing = 41;
+const markerOffsets = [];
+for (let x = -3; x <= 3; x++) {
+  for (let y = -3; y <= 3; y++) markerOffsets.push({ x, y });
+}
+markerOffsets.sort((a, b) => a.x ** 2 + a.y ** 2 - b.x ** 2 - b.y ** 2 || a.y - b.y || b.x - a.x);
 
 function disposeModel(root) {
   const resources = new Set();
@@ -69,7 +75,7 @@ export function makeViewer(viewport, { header, footer }, context) {
   scene.add(fill);
 
   const camera = new OrthographicCamera(-1, 1, 1, -1, 0.05, 180);
-  const controls = new OrbitControls(camera, renderer.domElement);
+  const controls = new OrbitControls(camera, viewport);
   controls.enableDamping = true;
   controls.dampingFactor = 0.12;
   controls.enablePan = false;
@@ -77,16 +83,19 @@ export function makeViewer(viewport, { header, footer }, context) {
   controls.maxZoom = 3.5;
   controls.minPolarAngle = 0.25;
   controls.maxPolarAngle = 1.42;
-  const visitor = makeVisitor(viewport, context);
-
+  const visitors = new Map();
+  let orderedVisitors = [];
+  let selectedCharacter;
+  const fallbackName = context.language.startsWith('zh') ? '住客' : 'Resident';
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const loader = new GLTFLoader();
   let activeModel = null;
-  let showVisitor = false;
-  let motion = null;
   let visible = false;
   let stopped = false;
   let frame = 0;
+  let modelNeedsDrawing = true;
+  let viewWidth = 0;
+  let viewHeight = 0;
   const horizontal = new Vector3();
   const vertical = new Vector3();
 
@@ -94,27 +103,104 @@ export function makeViewer(viewport, { header, footer }, context) {
     if (visible && !stopped && !frame) frame = requestAnimationFrame(draw);
   }
 
-  function updateMotion() {
+  function invalidateModel() {
+    modelNeedsDrawing = true;
+    requestDraw();
+  }
+
+  function updateMotion({ marker, motion }, now) {
     if (!motion) return false;
     const { from, to, startsAt, endsAt } = motion;
-    const elapsed = (Date.now() - startsAt) / (endsAt - startsAt);
+    const elapsed = (now - startsAt) / (endsAt - startsAt);
     const fraction = reduceMotion.matches ? 1 : Math.max(0, Math.min(1, elapsed));
-    visitor.position.lerpVectors(from, to, fraction);
+    marker.position.lerpVectors(from, to, fraction);
     return fraction < 1;
+  }
+
+  function projectVisitors() {
+    // Separate overlapping badges in screen space while preserving their walk points.
+    const used = [];
+    for (const { marker } of orderedVisitors) {
+      const projected = marker.project(camera);
+      if (!projected) {
+        marker.hide();
+        continue;
+      }
+      const x = ((projected.x + 1) * viewWidth) / 2;
+      const y = ((1 - projected.y) * viewHeight) / 2;
+      let visiblePoint = { x, y };
+      for (const offset of markerOffsets) {
+        const xOffset = x + offset.x * markerSpacing;
+        const yOffset = y + offset.y * markerSpacing;
+        if (
+          (offset.x || offset.y) &&
+          (xOffset < 18 || xOffset > viewWidth - 18 || yOffset < 36 || yOffset > viewHeight - 5)
+        ) continue;
+        if (used.every((point) => (point.x - xOffset) ** 2 + (point.y - yOffset) ** 2 >= markerSpacing ** 2)) {
+          visiblePoint = { x: xOffset, y: yOffset };
+          break;
+        }
+      }
+      used.push(visiblePoint);
+      marker.show(visiblePoint.x, visiblePoint.y);
+    }
+  }
+
+  function clearVisitors() {
+    for (const { marker } of visitors.values()) marker.dispose();
+    visitors.clear();
+    orderedVisitors = [];
+  }
+
+  function updateVisitorIdentity(visitor, characterId) {
+    const selected = selectedCharacter?.characterId === characterId;
+    visitor.marker.setCharacter({
+      selected,
+      name: (selected ? selectedCharacter.name : null) || visitor.name,
+      avatar: selected ? selectedCharacter.avatar : null,
+    });
+  }
+
+  function updateVisitorPosition(visitor, point, timeline) {
+    const position = activeModel.points.get(point)?.position;
+    if (!position) throw new Error(`Missing town point ${point}`);
+    if (!timeline) {
+      if (!visitor.motion && visitor.marker.position.equals(position)) return false;
+      visitor.motion = null;
+      visitor.marker.position.copy(position);
+      return true;
+    }
+
+    const from = activeModel.points.get(timeline.from)?.position;
+    const to = activeModel.points.get(timeline.to)?.position;
+    if (!from || !to) throw new Error(`Missing walk ${timeline.from} → ${timeline.to}`);
+    const { startsAt, endsAt } = timeline;
+    const previous = visitor.motion;
+    if (previous?.from === from && previous.to === to &&
+        previous.startsAt === startsAt && previous.endsAt === endsAt) return false;
+    visitor.motion = { from, to, startsAt, endsAt };
+    return true;
   }
 
   function draw() {
     frame = 0;
-    const moving = updateMotion();
+    let moving = false;
+    const now = Date.now();
+    for (const visitor of orderedVisitors) moving = updateMotion(visitor, now) || moving;
     controls.update();
-    renderer.render(scene, camera);
-    if (activeModel && showVisitor) visitor.project(camera);
+    if (modelNeedsDrawing) {
+      renderer.render(scene, camera);
+      modelNeedsDrawing = false;
+    }
+    if (activeModel) projectVisitors();
     if (moving) requestDraw();
   }
 
   function resize() {
     const { width, height } = viewport.getBoundingClientRect();
     if (width < 1 || height < 1) return;
+    viewWidth = width;
+    viewHeight = height;
     renderer.setSize(width, height, false);
     if (activeModel) {
       const size = activeModel.bounds.getSize(new Vector3()).multiplyScalar(0.5);
@@ -142,7 +228,7 @@ export function makeViewer(viewport, { header, footer }, context) {
       camera.bottom = -halfHeight + verticalOffset;
       camera.updateProjectionMatrix();
     }
-    requestDraw();
+    invalidateModel();
   }
 
   function resetView() {
@@ -155,7 +241,8 @@ export function makeViewer(viewport, { header, footer }, context) {
     controls.update();
   }
 
-  controls.addEventListener('change', requestDraw);
+  controls.addEventListener('change', invalidateModel);
+  reduceMotion.addEventListener('change', requestDraw);
   const sizes = new ResizeObserver(resize);
   sizes.observe(viewport);
   sizes.observe(header);
@@ -177,68 +264,62 @@ export function makeViewer(viewport, { header, footer }, context) {
         throw error;
       }
     },
-    show(model, point, signal, options) {
+    show(model, signal) {
       if (signal.aborted) {
         disposeModel(model.root);
         signal.throwIfAborted();
-      }
-      const marker = model.points.get(point);
-      if (!marker) {
-        disposeModel(model.root);
-        throw new Error(`Missing arrival point ${point}`);
       }
       if (activeModel) {
         scene.remove(activeModel.root);
         disposeModel(activeModel.root);
       }
       activeModel = model;
-      showVisitor = options.showVisitor;
-      motion = null;
+      clearVisitors();
       scene.add(model.root);
-      visitor.position.copy(marker.position);
-      visitor.hide();
       resetView();
     },
-    place(point, timeline) {
-      const marker = activeModel.points.get(point);
-      if (!marker) throw new Error(`Missing town point ${point}`);
-      if (!timeline) {
-        if (!motion && visitor.position.equals(marker.position)) return;
-        motion = null;
-        visitor.position.copy(marker.position);
-      } else {
-        const from = activeModel.points.get(timeline.from)?.position;
-        const to = activeModel.points.get(timeline.to)?.position;
-        if (!from || !to) throw new Error(`Missing walk ${timeline.from} → ${timeline.to}`);
-        const { startsAt, endsAt } = timeline;
-        if (
-          motion?.from === from &&
-          motion.to === to &&
-          motion.startsAt === startsAt &&
-          motion.endsAt === endsAt
-        ) {
-          return;
+    setOccupants(occupants) {
+      let changed = false;
+      const present = new Set();
+      for (const { characterId, name, point, motion } of occupants) {
+        let visitor = visitors.get(characterId);
+        if (!visitor) {
+          visitor = { marker: makeVisitor(viewport, fallbackName), motion: null };
+          visitors.set(characterId, visitor);
+          changed = true;
         }
-        motion = { from, to, startsAt, endsAt };
-        updateMotion();
+        present.add(characterId);
+        visitor.name = name;
+        updateVisitorIdentity(visitor, characterId);
+        changed = updateVisitorPosition(visitor, point, motion) || changed;
       }
-      requestDraw();
+      for (const [characterId, { marker }] of visitors) {
+        if (!present.has(characterId)) {
+          marker.dispose();
+          visitors.delete(characterId);
+          changed = true;
+        }
+      }
+      if (changed) {
+        const selected = selectedCharacter?.characterId;
+        orderedVisitors = [...visitors.keys()].sort((a, b) =>
+          a === selected ? -1 : b === selected ? 1 : a.localeCompare(b)
+        ).map((id) => visitors.get(id));
+        requestDraw();
+      }
     },
-    setVisitorVisible(value) {
-      if (showVisitor === value) return;
-      showVisitor = value;
-      if (!value) visitor.hide();
-      requestDraw();
+    setSelectedCharacter(character) {
+      selectedCharacter = character;
+      for (const [id, visitor] of visitors) updateVisitorIdentity(visitor, id);
     },
     clear() {
-      motion = null;
       if (activeModel) {
         scene.remove(activeModel.root);
         disposeModel(activeModel.root);
         activeModel = null;
       }
-      visitor.hide();
-      requestDraw();
+      clearVisitors();
+      invalidateModel();
     },
     setVisible(value) {
       visible = value;
@@ -252,12 +333,12 @@ export function makeViewer(viewport, { header, footer }, context) {
     dispose() {
       stopped = true;
       cancelAnimationFrame(frame);
-      motion = null;
       sizes.disconnect();
-      controls.removeEventListener('change', requestDraw);
+      controls.removeEventListener('change', invalidateModel);
+      reduceMotion.removeEventListener('change', requestDraw);
       controls.dispose();
       if (activeModel) disposeModel(activeModel.root);
-      visitor.dispose();
+      clearVisitors();
       renderer.dispose();
       renderer.domElement.remove();
     },
