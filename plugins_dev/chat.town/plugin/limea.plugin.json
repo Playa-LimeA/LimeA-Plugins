@@ -1,11 +1,16 @@
 {
   "id": "chat.town",
   "name": "陪伴小镇",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "apiVersion": 13,
   "hostVersion": ">=0.1.1 <1",
   "entry": "backend.mjs",
-  "permissions": ["character:avatar", "character:town-state", "character:town-residents"],
+  "permissions": [
+    "character:avatar",
+    "character:town-state",
+    "character:town-residents",
+    "character:town-resident-avatars"
+  ],
   "page": {
     "entry": "page.mjs",
     "description": "入住角色各有自己的家，在同一个小镇生活、出门逛街，也能去其他住客家做客。",

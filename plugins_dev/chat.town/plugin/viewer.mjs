@@ -157,7 +157,7 @@ export function makeViewer(viewport, { header, footer }, context) {
     visitor.marker.setCharacter({
       selected,
       name: (selected ? selectedCharacter.name : null) || visitor.name,
-      avatar: selected ? selectedCharacter.avatar : null,
+      avatar: selected ? selectedCharacter.avatar : visitor.avatar,
     });
   }
 
@@ -281,7 +281,7 @@ export function makeViewer(viewport, { header, footer }, context) {
     setOccupants(occupants) {
       let changed = false;
       const present = new Set();
-      for (const { characterId, name, point, motion } of occupants) {
+      for (const { characterId, name, avatar, point, motion } of occupants) {
         let visitor = visitors.get(characterId);
         if (!visitor) {
           visitor = { marker: makeVisitor(viewport, fallbackName), motion: null };
@@ -290,6 +290,7 @@ export function makeViewer(viewport, { header, footer }, context) {
         }
         present.add(characterId);
         visitor.name = name;
+        visitor.avatar = avatar;
         updateVisitorIdentity(visitor, characterId);
         changed = updateVisitorPosition(visitor, point, motion) || changed;
       }

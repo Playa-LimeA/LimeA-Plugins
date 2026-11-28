@@ -320,7 +320,12 @@ export function mount(container, context) {
     const resident = town?.resident ?? null;
     latest = resident ?? undefined;
     const scene = town?.scene ?? browse ?? shownScene ?? 'home';
-    const occupants = town?.occupants ?? [];
+    const occupants = town?.occupants.map((occupant) => {
+      const { avatar } = occupant;
+      return avatar == null || (typeof avatar === 'string' && avatar.startsWith('data:image/png;base64,'))
+        ? occupant
+        : { ...occupant, avatar: null };
+    }) ?? [];
     const motion = resident?.paused ? undefined : resident?.motion;
     root.dataset.resident = String(Boolean(resident));
     root.dataset.activity = resident?.activity ?? 'idle';
