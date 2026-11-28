@@ -1,0 +1,200 @@
+.town {
+  --town-ink: #293b31;
+  --town-paper: #fbf7ee;
+  --town-overlay: #fbf7eef5;
+  --town-border: #60584432;
+  --town-hover: #e8eee4;
+  --town-selected: #476759;
+  --town-inset: clamp(8px, 2.8%, 16px);
+  position: relative;
+  isolation: isolate;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #e7ddd0;
+  color: var(--town-ink);
+  font-family: inherit;
+}
+
+.town-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.town-viewport canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.town-viewport canvas:active {
+  cursor: grabbing;
+}
+
+.town-header,
+.town-footer {
+  position: absolute;
+  z-index: 1;
+}
+
+.town-header {
+  inset: var(--town-inset) var(--town-inset) auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.town-location,
+.town-reset,
+.town-footer {
+  border: 1px solid var(--town-border);
+  background: var(--town-overlay);
+  box-shadow: 0 2px 8px #382b1b18;
+}
+
+.town-location {
+  min-width: 0;
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.town button {
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.town button:focus-visible {
+  outline: 2px solid var(--town-selected);
+  outline-offset: 2px;
+}
+
+.town button:disabled {
+  cursor: default;
+}
+
+.town-reset,
+.town-retry,
+.town-toggle {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  border-radius: 7px;
+  white-space: nowrap;
+}
+
+.town-reset {
+  pointer-events: auto;
+}
+
+.town-retry,
+.town-toggle {
+  padding-block: 4px;
+  border: 1px solid var(--town-border);
+  background: var(--town-paper);
+}
+
+.town-reset:hover:not(:disabled),
+.town-retry:hover:not(:disabled),
+.town-toggle:hover:not(:disabled) {
+  background: var(--town-hover);
+}
+
+.town-reset:disabled,
+.town-retry:disabled,
+.town-toggle:disabled {
+  opacity: 0.66;
+}
+
+.town-footer {
+  inset: auto var(--town-inset) var(--town-inset);
+  width: fit-content;
+  max-width: calc(100% - 2 * var(--town-inset));
+  box-sizing: border-box;
+  padding: 7px 8px 8px;
+  border-radius: 10px;
+}
+
+.town-status-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.town-status {
+  flex: 1;
+  margin: 0;
+  padding-inline: 3px;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.town-role {
+  position: absolute;
+  display: block;
+  width: 42px;
+  height: 42px;
+  transform: translate(-50%, calc(-100% - 5px));
+  filter: drop-shadow(0 2px 4px #30291e59);
+  pointer-events: none;
+}
+
+.town-role[hidden],
+.town-role-face img[hidden] {
+  display: none;
+}
+
+.town-role::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 5px);
+  bottom: -4px;
+  z-index: -1;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  background: var(--town-paper);
+}
+
+.town-role-face,
+.town-role-face img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.town-role-face {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid var(--town-paper);
+  border-radius: 50%;
+  color: #fffaf1;
+  background: var(--town-selected);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.town-role-face img {
+  display: block;
+  object-fit: cover;
+}

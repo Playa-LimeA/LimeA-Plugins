@@ -1,0 +1,157 @@
+{
+  "id": "chat.town",
+  "name": "陪伴小镇",
+  "version": "0.2.0",
+  "apiVersion": 13,
+  "hostVersion": ">=0.1.0 <1",
+  "entry": "backend.mjs",
+  "permissions": ["character:avatar", "character:town-state", "character:town-residents"],
+  "page": {
+    "entry": "page.mjs",
+    "description": "给喜欢的角色一个在小镇生活的家。她们会自行作息，出门逛街或在家休息。"
+  },
+  "tools": [
+    {
+      "id": "list_residents",
+      "name": "列出小镇住客",
+      "description": "List the characters currently living in Companion Town. Use to answer who lives here and obtain a resident ID for a lookup.",
+      "access": "read",
+      "modes": [
+        "chat"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_resident_state",
+      "name": "查询住客状态",
+      "description": "Get a town resident's confirmed location, activity and current phase. Omit resident_id for your own state, or use an ID from the resident list to check another resident.",
+      "access": "read",
+      "modes": [
+        "chat"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "resident_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_activities",
+      "name": "查看小镇地点和活动",
+      "description": "List the accessible town locations and supported activities. Optionally filter by scene. Use these IDs to arrange a visit or an activity.",
+      "access": "read",
+      "modes": [
+        "chat"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "scene": {
+            "type": "string",
+            "enum": [
+              "home",
+              "street_corner",
+              "cafe",
+              "park",
+              "bakery",
+              "shop",
+              "supermarket"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "go_to",
+      "name": "前往小镇地点",
+      "description": "Arrange for yourself to walk to a verified location in town. Use when you have decided to go somewhere, not when someone only asks where you are. A return value of accepted means the trip has been arranged, not that you have arrived.",
+      "access": "local",
+      "modes": [
+        "chat"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "enum": [
+              "home",
+              "street_corner",
+              "cafe",
+              "park",
+              "bakery",
+              "shop",
+              "supermarket"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "location"
+        ]
+      }
+    },
+    {
+      "id": "do_activity",
+      "name": "安排小镇活动",
+      "description": "Arrange for yourself to walk to an activity point and start a verified town activity after arrival. Choose an activity ID from the available catalog. An accepted plan is not an activity already in progress.",
+      "access": "local",
+      "modes": [
+        "chat"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "activity": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "activity"
+        ]
+      }
+    }
+  ],
+  "panels": [
+    {
+      "id": "chat.town.map",
+      "name": "陪伴小镇",
+      "entry": "panel.mjs",
+      "placement": "tab",
+      "modes": ["chat"]
+    }
+  ],
+  "resources": [
+    "town.css",
+    "locations.mjs",
+    "routes.mjs",
+    "routine.mjs",
+    "journey.mjs",
+    "navigation.mjs",
+    "town-state.mjs",
+    "town-tools.mjs",
+    "viewer.mjs",
+    "visitor.mjs",
+    "vendor/three-town.mjs",
+    "assets/home.glb",
+    "assets/street_corner.glb",
+    "assets/cafe.glb",
+    "assets/park.glb",
+    "assets/bakery.glb",
+    "assets/shop.glb",
+    "assets/supermarket.glb"
+  ]
+}
