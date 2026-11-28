@@ -26,9 +26,9 @@
     {
       "id": "chat.town",
       "name": "陪伴小镇",
-      "description": "在聊天右栏打开三维陪伴小镇。入住角色各有自己的家，可以沿街道串门做客，也能在街角、公园和店铺遇见其他住客。地图可以切换场景，收起右栏后住客仍按各自的日程生活。需要 LimeA 0.1.1 或更新的 0.x 版本。使用支持同场头像的 LimeA 时可查看其他住客的角色卡头像，旧版仍显示姓名首字。",
+      "description": "在聊天右栏打开三维陪伴小镇。插件详情可选择现实时间或虚拟时间，现实 6 分钟等于小镇 1 小时，场景顶部显示小镇时钟。入住角色各有自己的家，可以串门做客，也能在街角、公园和店铺遇见其他住客。地图可以切换场景，收起右栏后住客仍按各自的日程生活。需要 LimeA 0.1.1 或更新的 0.x 版本。使用支持同场头像的 LimeA 时可查看其他住客的角色卡头像，旧版仍显示姓名首字。",
       "author": "Playa",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "hostVersion": ">=0.1.1 <1",
       "category": "appearance",
       "tier": "official",
@@ -38,8 +38,8 @@
         "character:town-residents",
         "character:town-resident-avatars"
       ],
-      "archive": "plugins/chat.town/0.2.3.zip",
-      "sha256": "5efbe850c12bfc195ef97bd40d33d2e73c62194063d693d8c01c93c52bee12ae"
+      "archive": "plugins/chat.town/0.2.4.zip",
+      "sha256": "1b4fca15a6806c57613471bac295975f9a880dd587359442dba32c171fbbbd44"
     },
     {
       "id": "connectors.baidu-netdisk",
