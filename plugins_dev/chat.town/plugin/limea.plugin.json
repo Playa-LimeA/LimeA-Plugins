@@ -3,12 +3,13 @@
   "name": "陪伴小镇",
   "version": "0.2.0",
   "apiVersion": 13,
-  "hostVersion": ">=0.1.0 <1",
+  "hostVersion": ">=0.1.1 <1",
   "entry": "backend.mjs",
   "permissions": ["character:avatar", "character:town-state", "character:town-residents"],
   "page": {
     "entry": "page.mjs",
-    "description": "给喜欢的角色一个在小镇生活的家。她们会自行作息，出门逛街或在家休息。"
+    "description": "给喜欢的角色一个在小镇生活的家。她们会自行作息，出门逛街或在家休息。",
+    "author": "Playa"
   },
   "tools": [
     {

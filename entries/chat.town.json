@@ -1,0 +1,10 @@
+{
+  "author": "Playa",
+  "category": "appearance",
+  "tier": "official",
+  "description": "在聊天右栏打开三维陪伴小镇。从插件详情页选择入住角色，在家、街角、咖啡厅、公园、面包店、家具店和超市观察她们的日常。角色会按时间和各自偏好行动，收起右栏后日程照常推进。聊天可以查询住客位置，也可以和当前角色约好接下来的活动。需要 LimeA 0.1.1 或更新的 0.x 版本。",
+  "license": "MIT",
+  "assetLicense": "plugins_dev/chat.town/ASSETS.md",
+  "repository": "plugins_dev/chat.town",
+  "documentation": "plugins_dev/chat.town/README.md"
+}
