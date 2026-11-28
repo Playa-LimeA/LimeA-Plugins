@@ -2,7 +2,7 @@
   "author": "Playa",
   "category": "appearance",
   "tier": "official",
-  "description": "在聊天右栏打开三维陪伴小镇。点击地图查看角色当前位置，并在家、街角、咖啡厅、公园、面包店、家具店和超市之间切换浏览。入住角色按各自的日程生活，收起右栏后照常推进。聊天可以查询住客位置，也可以和当前角色约好接下来的活动。需要 LimeA 0.1.1 或更新的 0.x 版本。",
+  "description": "在聊天右栏打开三维陪伴小镇。入住角色各有自己的家，可以沿街道串门做客，也能在街角、公园和店铺遇见其他住客。地图可以切换场景，角色状态卡显示当前位置、动作和目的地。收起右栏后，住客仍按各自的日程生活。需要 LimeA 0.1.1 或更新的 0.x 版本。",
   "license": "MIT",
   "assetLicense": "plugins_dev/chat.town/ASSETS.md",
   "repository": "plugins_dev/chat.town",
