@@ -1,0 +1,122 @@
+:host {
+  color: var(--foreground);
+  font-family: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.town-detail {
+  display: grid;
+  gap: var(--ui-space-8);
+}
+
+.town-detail h2,
+.town-detail h3,
+.town-detail p,
+.town-detail ul,
+.town-detail ol,
+.town-detail blockquote {
+  margin: 0;
+}
+
+.town-detail h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  padding-bottom: var(--ui-space-3);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--ui-text-base);
+  font-weight: 600;
+}
+
+.town-detail h3 {
+  font-size: var(--ui-text-sm);
+  font-weight: 600;
+}
+
+.town-detail p,
+.town-detail li {
+  font-size: var(--ui-text-sm);
+  line-height: var(--ui-leading-prose);
+  overflow-wrap: anywhere;
+}
+
+.town-detail .muted,
+.town-detail-icon {
+  color: var(--muted-foreground);
+}
+
+.town-detail-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.town-detail-features,
+.town-detail-steps {
+  display: grid;
+  padding-top: var(--ui-space-4);
+}
+
+.town-detail-features {
+  gap: var(--ui-space-4);
+  padding-left: 0;
+  list-style: none;
+}
+
+.town-detail-features h3 {
+  margin-bottom: var(--ui-space-1);
+}
+
+.town-detail-steps {
+  gap: var(--ui-space-2);
+  padding-left: var(--ui-space-5);
+}
+
+.town-detail .town-detail-examples {
+  margin-top: var(--ui-space-3);
+  padding: var(--ui-space-2) 0 var(--ui-space-2) var(--ui-space-4);
+  border-left: 2px solid var(--border);
+}
+
+.town-detail-clock-row,
+.town-detail-clock-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3);
+}
+
+.town-detail-clock-row {
+  padding-top: var(--ui-space-4);
+}
+
+.town-detail-clock-caption {
+  display: grid;
+  flex: 1 1 16rem;
+  gap: var(--ui-space-1);
+}
+
+.town-detail-clock-feedback {
+  margin-top: var(--ui-space-3);
+}
+
+.town-detail-clock-control select,
+.town-detail-clock-feedback button {
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius-md);
+  background: var(--background);
+  color: inherit;
+  font: inherit;
+  font-size: var(--ui-text-sm);
+}
+
+.town-detail-clock-feedback button {
+  cursor: pointer;
+}
+
+.town-detail-clock-feedback button:hover {
+  background: var(--muted);
+}

@@ -1,7 +1,7 @@
 {
   "id": "chat.town",
   "name": "陪伴小镇",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "apiVersion": 13,
   "hostVersion": ">=0.1.1 <1",
   "entry": "backend.mjs",
@@ -14,7 +14,8 @@
   "page": {
     "entry": "page.mjs",
     "description": "入住角色各有自己的家，在同一个小镇生活、出门逛街，也能去其他住客家做客。",
-    "author": "Playa"
+    "author": "Playa",
+    "illustration": "assets/banner.png"
   },
   "tools": [
     {
@@ -159,11 +160,13 @@
       "id": "chat.town.map",
       "name": "陪伴小镇",
       "entry": "panel.mjs",
+      "icon": "assets/icon.png",
       "placement": "tab",
       "modes": ["chat"]
     }
   ],
   "resources": [
+    "page.css",
     "town.css",
     "locations.mjs",
     "routes.mjs",
