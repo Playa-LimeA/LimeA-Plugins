@@ -226,6 +226,7 @@ export function mount(container, context) {
   let browseScene;
   let displayedMinute;
   let displayedClockMode;
+  let displayedTime;
 
   function updateClock(sample) {
     const { mode, at } = sample ?? {};
@@ -233,20 +234,22 @@ export function mount(container, context) {
       Number.isSafeInteger(at) && at >= 0 && at <= 8.64e15;
     const minute = valid ? Math.floor(at / 60_000) : undefined;
     const clockMode = valid ? mode : undefined;
-    if (minute === displayedMinute && clockMode === displayedClockMode) return;
+    if (minute === displayedMinute && clockMode === displayedClockMode) return displayedTime;
     displayedMinute = minute;
     displayedClockMode = clockMode;
     if (!valid) {
+      displayedTime = undefined;
       townTime.textContent = '--:--';
       townTime.removeAttribute('datetime');
       townTime.setAttribute('aria-label', words.clock.unavailable);
       return;
     }
-    const displayTime = new Date(minute * 60_000);
-    const value = clockFormat.format(displayTime);
+    displayedTime = new Date(minute * 60_000);
+    const value = clockFormat.format(displayedTime);
     townTime.textContent = value;
-    townTime.dateTime = displayTime.toISOString();
+    townTime.dateTime = displayedTime.toISOString();
     townTime.setAttribute('aria-label', `${words.clock[clockMode]} ${value}`);
+    return displayedTime;
   }
 
   function showLoading() {
@@ -367,7 +370,7 @@ export function mount(container, context) {
     map.update(scene, resident?.scene);
     const title = name(scene, town?.residence);
     locationTitle.textContent = mapOpen ? words.mapTitle : title;
-    updateClock(town?.clock);
+    const time = updateClock(town?.clock);
     updateStatus(resident, owner, readFailed);
 
     if (!mapOpen) {
@@ -384,6 +387,7 @@ export function mount(container, context) {
           shownScene = scene;
         }
         signal.throwIfAborted();
+        viewer.setTownTime(time);
         viewer.setOccupants(occupants);
         root.dataset.scene = scene;
         root.dataset.point =

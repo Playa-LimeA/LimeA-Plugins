@@ -1,10 +1,7 @@
 import {
   ACESFilmicToneMapping,
   Box3,
-  Color,
-  DirectionalLight,
   GLTFLoader,
-  HemisphereLight,
   OrbitControls,
   OrthographicCamera,
   Scene,
@@ -12,6 +9,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from './vendor/three-town.mjs';
+import { makeTownLighting } from './town-lighting.mjs';
 import { makeVisitor } from './visitor.mjs';
 
 const diagonal = new Vector3(0.84, 0.97, 1.34).normalize();
@@ -60,19 +58,11 @@ export function makeViewer(viewport, { header, footer }, context) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
   renderer.domElement.setAttribute('aria-hidden', 'true');
   viewport.prepend(renderer.domElement);
 
   const scene = new Scene();
-  scene.background = new Color(0xe7ddd0);
-  scene.add(new HemisphereLight(0xfff4e8, 0xa9a590, 2.0));
-  const sunlight = new DirectionalLight(0xfff0db, 1.8);
-  sunlight.position.set(-5, 9, 5);
-  scene.add(sunlight);
-  const fill = new DirectionalLight(0xe7f3ff, 0.58);
-  fill.position.set(5, 4, -6);
-  scene.add(fill);
+  const updateLighting = makeTownLighting(scene, renderer);
 
   const camera = new OrthographicCamera(-1, 1, 1, -1, 0.05, 180);
   const controls = new OrbitControls(camera, viewport);
@@ -312,6 +302,9 @@ export function makeViewer(viewport, { header, footer }, context) {
     setSelectedCharacter(character) {
       selectedCharacter = character;
       for (const [id, visitor] of visitors) updateVisitorIdentity(visitor, id);
+    },
+    setTownTime(time) {
+      if (updateLighting(time)) invalidateModel();
     },
     clear() {
       if (activeModel) {
