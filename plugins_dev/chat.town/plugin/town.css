@@ -54,6 +54,7 @@
 
 .town-location,
 .town-reset,
+.town-map-toggle,
 .town-footer {
   border: 1px solid var(--town-border);
   background: var(--town-overlay);
@@ -88,7 +89,9 @@
 }
 
 .town-reset,
+.town-map-toggle,
 .town-retry,
+.town-follow,
 .town-toggle {
   flex: 0 0 auto;
   padding: 7px 9px;
@@ -96,11 +99,15 @@
   white-space: nowrap;
 }
 
-.town-reset {
+.town-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   pointer-events: auto;
 }
 
 .town-retry,
+.town-follow,
 .town-toggle {
   padding-block: 4px;
   border: 1px solid var(--town-border);
@@ -108,7 +115,9 @@
 }
 
 .town-reset:hover:not(:disabled),
+.town-map-toggle:hover,
 .town-retry:hover:not(:disabled),
+.town-follow:hover,
 .town-toggle:hover:not(:disabled) {
   background: var(--town-hover);
 }
@@ -117,6 +126,89 @@
 .town-retry:disabled,
 .town-toggle:disabled {
   opacity: 0.66;
+}
+
+.town-map-toggle[aria-expanded='true'] {
+  border-color: var(--town-selected);
+  background: var(--town-hover);
+}
+
+.town-map {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  overflow: auto;
+  padding: 62px var(--town-inset) 88px;
+  background: #eee5d4;
+  scrollbar-color: #ac9e87 #eee5d4;
+}
+
+.town-map[hidden] {
+  display: none;
+}
+
+.town-map-board {
+  position: relative;
+  width: min(100%, 720px);
+  aspect-ratio: 640 / 500;
+}
+
+.town-map-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.town-map .town-map-place {
+  position: absolute;
+  top: var(--map-y);
+  left: var(--map-x);
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  min-width: 35px;
+  max-width: 23%;
+  min-height: 31px;
+  padding: 4px 7px;
+  border: 1px solid #81765e;
+  border-radius: 7px;
+  background: #fff9eb;
+  color: #293b31;
+  font-weight: 650;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.town-map-place:hover,
+.town-map-place:focus-visible {
+  z-index: 1;
+  background: #fffdf5;
+}
+
+.town-map-place[aria-current='location'] {
+  border-color: #354f43;
+  background: #354f43;
+  color: #fff9eb;
+}
+
+.town-map-place::before {
+  position: absolute;
+  inset: -5px;
+  content: '';
+}
+
+.town-map-place[data-resident]::after {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #fff9eb;
+  border-radius: 50%;
+  background: #aa4a2b;
+  content: '';
 }
 
 .town-footer {

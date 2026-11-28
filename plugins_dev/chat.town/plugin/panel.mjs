@@ -1,9 +1,9 @@
 import { locations } from './locations.mjs';
+import { createTownMap } from './town-map.mjs';
 import { activityCatalog, isTownState } from './town-state.mjs';
 import { makeViewer } from './viewer.mjs';
 
 const refreshInterval = 200;
-const preview = { scene: 'home', point: locations.home.visit, activity: 'idle', paused: false };
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -34,6 +34,12 @@ function validSnapshot(state) {
 const text = {
   zh: {
     title: '陪伴小镇',
+    map: '地图',
+    mapTitle: '小镇地图',
+    closeMap: '返回场景',
+    follow: '回到角色',
+    returnHome: '回到家',
+    residentHere: (place) => `${place}，角色当前在这里`,
     loading: '正在打开小镇',
     reset: '重置视角',
     retry: '重试',
@@ -56,6 +62,12 @@ const text = {
   },
   en: {
     title: 'Companion Town',
+    map: 'Map',
+    mapTitle: 'Town map',
+    closeMap: 'Back to scene',
+    follow: 'Follow character',
+    returnHome: 'Back to home',
+    residentHere: (place) => `${place}, current character location`,
     loading: 'Opening town',
     reset: 'Reset view',
     retry: 'Try again',
@@ -92,7 +104,24 @@ export function mount(container, context) {
   const reset = element('button', 'town-reset', words.reset);
   reset.type = 'button';
   reset.disabled = true;
-  header.append(locationTitle, reset);
+  const mapToggle = element('button', 'town-map-toggle', words.map);
+  mapToggle.type = 'button';
+  mapToggle.setAttribute('aria-expanded', 'false');
+  mapToggle.setAttribute('aria-controls', 'companion-town-map');
+  const actions = element('div', 'town-header-actions');
+  actions.append(mapToggle, reset);
+  header.append(locationTitle, actions);
+
+  const map = createTownMap(
+    context.resourceBase,
+    language,
+    words.mapTitle,
+    words.residentHere,
+    (scene) => {
+      browseScene = scene;
+      setMapOpen(false);
+    },
+  );
 
   const viewport = element('div', 'town-viewport');
   viewport.dataset.testid = 'town-viewport';
@@ -110,9 +139,12 @@ export function mount(container, context) {
   toggle.type = 'button';
   toggle.dataset.townToggle = '';
   toggle.disabled = true;
-  statusRow.append(status, retry, toggle);
+  const follow = element('button', 'town-follow', words.follow);
+  follow.type = 'button';
+  follow.hidden = true;
+  statusRow.append(status, retry, follow, toggle);
   footer.append(statusRow);
-  root.append(viewport, header, footer);
+  root.append(viewport, header, map.element, footer);
   root.dataset.travelling = 'false';
   root.dataset.activity = 'idle';
   root.dataset.paused = 'false';
@@ -125,13 +157,18 @@ export function mount(container, context) {
   let identityAvailable = false;
   let characterId = null;
   let latest;
+  let mapOpen = false;
+  let browseScene;
 
   function statusText(message) {
     if (status.textContent !== message) status.textContent = message;
   }
 
   function updateControls(pending = false) {
+    reset.hidden = mapOpen;
     reset.disabled = viewport.hidden || !shownScene;
+    follow.hidden = mapOpen || !browseScene;
+    follow.textContent = latest ? words.follow : words.returnHome;
     toggle.disabled = !latest || pending;
     toggle.textContent = latest?.paused ? words.resume : words.pause;
   }
@@ -159,9 +196,9 @@ export function mount(container, context) {
 
   async function refresh(watch, paused) {
     const { owner, signal } = watch;
-    let failure = words.restoreFailed;
+    let resident = null;
+    let readFailed = false;
     try {
-      let resident = null;
       if (owner) {
         resident =
           paused === undefined
@@ -170,51 +207,72 @@ export function mount(container, context) {
         signal.throwIfAborted();
         if (resident !== null && !validSnapshot(resident)) throw new Error('Invalid town snapshot');
       }
-      const state = resident ?? preview;
-
-      if (!viewer) {
-        failure = words.graphics;
-        viewer = makeViewer(viewport, { header, footer }, context);
-      }
-
-      failure = words.failed(name(state.scene));
-      if (shownScene !== state.scene) {
-        const model = await viewer.load(state.scene, signal);
-        viewer.show(model, state.point, signal, { showVisitor: Boolean(resident) });
-        shownScene = state.scene;
-      }
-      signal.throwIfAborted();
-      viewer.setVisitorVisible(Boolean(resident));
-      const motion = state.paused ? undefined : state.motion;
-      viewer.place(state.point, motion);
-      if (viewport.hidden) {
-        viewport.hidden = false;
-        viewer.setVisible(true);
-      }
-
-      latest = resident ?? undefined;
-      root.dataset.resident = String(Boolean(resident));
-      root.dataset.scene = state.scene;
-      root.dataset.point = state.point;
-      root.dataset.activity = state.activity;
-      root.dataset.paused = String(state.paused);
-      root.dataset.travelling = String(Boolean(motion && motion.endsAt > Date.now()));
-      locationTitle.textContent = name(state.scene);
-      const currentLabel = label(state);
-      statusText(
-        resident
-          ? state.paused ? words.paused(currentLabel) : currentLabel
-          : owner ? words.notResident : identityAvailable ? words.selectCharacter : words.identityUnavailable,
-      );
-      updateControls();
-
-      if (owner) watch.timer = setTimeout(() => void refresh(watch), resident ? refreshInterval : 1000);
     } catch (error) {
       if (signal.aborted) return;
       console.warn('Companion Town:', error);
-      retry.hidden = false;
-      statusText(failure);
-      updateControls(true);
+      resident = null;
+      readFailed = true;
+    }
+
+    latest = resident ?? undefined;
+    const scene = browseScene ?? resident?.scene ?? (readFailed ? shownScene : undefined) ?? 'home';
+    const here = resident?.scene === scene ? resident : null;
+    const motion = resident?.paused ? undefined : resident?.motion;
+    root.dataset.resident = String(Boolean(resident));
+    root.dataset.activity = resident?.activity ?? 'idle';
+    root.dataset.paused = String(Boolean(resident?.paused));
+    root.dataset.travelling = String(Boolean(motion && motion.endsAt > Date.now()));
+    map.update(scene, resident?.scene);
+    locationTitle.textContent = mapOpen ? words.mapTitle : name(scene);
+
+    if (!mapOpen) {
+      let failure = words.graphics;
+      try {
+        viewer ??= makeViewer(viewport, { header, footer }, context);
+        failure = words.failed(name(scene));
+        const point = here?.point ?? locations[scene].visit;
+        if (shownScene !== scene) {
+          const model = await viewer.load(scene, signal);
+          viewer.show(model, point, signal, { showVisitor: Boolean(here) });
+          shownScene = scene;
+        }
+        signal.throwIfAborted();
+        viewer.setVisitorVisible(Boolean(here));
+        viewer.place(point, here ? motion : undefined);
+        root.dataset.scene = scene;
+        root.dataset.point = point;
+        if (viewport.hidden) {
+          viewport.hidden = false;
+          viewer.setVisible(true);
+        }
+      } catch (error) {
+        if (signal.aborted) return;
+        console.warn('Companion Town:', error);
+        stopDrawing();
+        retry.hidden = false;
+        statusText(failure);
+        updateControls();
+        return;
+      }
+    }
+
+    retry.hidden = !readFailed;
+    if (resident) {
+      const activity = label(resident);
+      const detail = resident.paused ? words.paused(activity) : activity;
+      statusText(mapOpen || !here ? `${name(resident.scene)} · ${detail}` : detail);
+    } else {
+      statusText(
+        readFailed
+          ? words.restoreFailed
+          : owner ? words.notResident : identityAvailable ? words.selectCharacter : words.identityUnavailable,
+      );
+    }
+    updateControls();
+
+    if (owner && !readFailed) {
+      const delay = mapOpen || !resident ? 1000 : refreshInterval;
+      watch.timer = setTimeout(() => void refresh(watch), delay);
     }
   }
 
@@ -234,6 +292,23 @@ export function mount(container, context) {
     viewer?.setVisible(false);
   }
 
+  function setMapOpen(value) {
+    stopDrawing();
+    mapOpen = value;
+    map.element.hidden = !value;
+    mapToggle.textContent = value ? words.closeMap : words.map;
+    mapToggle.setAttribute('aria-expanded', String(value));
+    const scene = browseScene ?? latest?.scene ?? shownScene ?? 'home';
+    locationTitle.textContent = value ? words.mapTitle : name(scene);
+    if (value) {
+      map.update(scene, latest?.scene);
+      map.focus(scene);
+    } else {
+      mapToggle.focus({ preventScroll: true });
+    }
+    observe();
+  }
+
   const unsubscribeCharacter = context.onCharacterChange?.(({ characterId: selected }) => {
     const canIdentify = selected !== undefined;
     const next = typeof selected === 'string' && selected.trim() ? selected : null;
@@ -242,8 +317,10 @@ export function mount(container, context) {
     stopDrawing();
     identityAvailable = canIdentify;
     characterId = next;
+    browseScene = undefined;
     shownScene = undefined;
     latest = undefined;
+    map.update('home', undefined);
     viewer?.clear();
     delete root.dataset.scene;
     delete root.dataset.point;
@@ -268,6 +345,18 @@ export function mount(container, context) {
   });
 
   reset.addEventListener('click', () => viewer?.resetView());
+  mapToggle.addEventListener('click', () => setMapOpen(!mapOpen));
+  follow.addEventListener('click', () => {
+    browseScene = undefined;
+    setMapOpen(false);
+  });
+  root.addEventListener('keydown', (event) => {
+    if (mapOpen && event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      setMapOpen(false);
+    }
+  });
   retry.addEventListener('click', () => observe());
   toggle.addEventListener('click', () => {
     if (latest) observe(!latest.paused);

@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 500" fill="none" aria-hidden="true">
+  <defs>
+    <pattern id="pavers" width="12" height="12" patternUnits="userSpaceOnUse">
+      <path d="M0 0h12M0 6h12M4 0v6m4 0v6" fill="none" stroke="#b3a690" stroke-opacity=".34" stroke-width=".65"/>
+    </pattern>
+    <pattern id="seams" width="9" height="9" patternUnits="userSpaceOnUse">
+      <path d="M1 0v9" fill="none" stroke="#fff8e9" stroke-opacity=".32" stroke-width="1"/>
+    </pattern>
+    <g id="tree">
+      <circle cx="2" cy="3" r="8" fill="#3c4736" opacity=".14"/>
+      <circle r="8" fill="#a6b48d" stroke="#77886a" stroke-width="1"/>
+      <path d="M-5 1a5 5 0 0 1 6-6m2 2a3 3 0 0 1 2 3" stroke="#dbe0be" stroke-width="1.15" stroke-linecap="round"/>
+    </g>
+    <g id="shrub">
+      <circle cx="-3" cy="1" r="4" fill="#97a87d"/>
+      <circle cx="2" cy="-1" r="5" fill="#afbb92"/>
+      <circle cx="5" cy="2" r="3" fill="#889d73"/>
+    </g>
+    <g id="bench" stroke-linecap="round">
+      <path d="M-6 2h12M-5 2v2m10-2v2" stroke="#8d6e53" stroke-width="1.3"/>
+      <path d="M-6 0h12" stroke="#ad9068" stroke-width="2"/>
+    </g>
+    <g id="door">
+      <path d="M-7 0H7v7H-7z" fill="#ddbea1" stroke="#9f8069" stroke-width=".8"/>
+      <path d="M-4 2h8m-8 2h8" stroke="#f6e0ca" stroke-width=".8" stroke-linecap="round"/>
+    </g>
+    <g id="zebra" fill="#faf0dd">
+      <rect width="3.5" height="32" rx=".7"/>
+      <rect x="8" width="3.5" height="32" rx=".7"/>
+      <rect x="16" width="3.5" height="32" rx=".7"/>
+      <rect x="24" width="3.5" height="32" rx=".7"/>
+      <rect x="32" width="3.5" height="32" rx=".7"/>
+    </g>
+  </defs>
+
+  <rect x="13" y="13" width="614" height="474" rx="31" fill="#e9decd"/>
+  <rect x="17" y="16" width="606" height="466" rx="29" fill="#f5eddf" stroke="#d2c4ae"/>
+  <path d="M42 222h373q17 0 17-16V37h67v181q0 9 10 9h89v116H42z" fill="#e4d8c4"/>
+  <path d="M42 222h373q17 0 17-16V37h67v181q0 9 10 9h89v116H42z" fill="url(#pavers)"/>
+
+  <!-- Square lots and verges keep the street edges readable at small widths. -->
+  <path d="M39 59q0-13 13-13h226v172H39z" fill="#eee3d0" stroke="#ddd0b9"/>
+  <path d="M292 52q0-13 13-13h102q14 0 14 14v165H292z" fill="#d5dcba" stroke="#abb99a"/>
+  <path d="M507 44q0-9 9-9h72q13 0 13 13v171h-94z" fill="#efe2c9" stroke="#dbcdb2"/>
+  <path d="M38 347h294v106q0 12-12 12H53q-15 0-15-15z" fill="#e1e0c2" stroke="#c5c7a4"/>
+  <path d="M347 347h253v103q0 15-15 15H347z" fill="#e6e4ca" stroke="#cecdb3"/>
+
+  <!-- The north road joins the main street at a T junction. -->
+  <path d="M43 242h384q15 0 15-15V32h47v195q0 15 15 15h94q10 0 10 10v65q0 10-10 10H43q-10 0-10-10v-65q0-10 10-10z" fill="#858f87" stroke="#748076" stroke-width="1.3"/>
+  <path d="M47 250h384q19 0 19-20V37m31 0v191q0 22 22 22h90M47 320h546" stroke="#a9b0a1" stroke-width="1" stroke-linecap="round"/>
+  <path d="M51 284h36m74 0h112m71 0h101m60 0h79M465.5 44v136m0 53v20" stroke="#d8d9bc" stroke-width="1.25" stroke-dasharray="8 7" stroke-linecap="round"/>
+  <path d="M109 218v18m0 96v18m315-151h12m58 0h10" stroke="#b7ad95" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 4"/>
+  <use href="#zebra" transform="translate(97 252) scale(.72 2.03)"/>
+  <use href="#zebra" transform="translate(485 187) rotate(90) scale(.65 1.22)"/>
+
+  <!-- Café terrace and furniture workshop -->
+  <path d="M42 190h233v28H42z" fill="#dacfba"/>
+  <path d="M42 190h233v28H42z" fill="url(#pavers)"/>
+  <rect x="57" y="88" width="85" height="83" rx="5" fill="#bdab91" opacity=".28"/>
+  <rect x="54" y="84" width="85" height="82" rx="5" fill="#ecd1a7" stroke="#a48e73"/>
+  <path d="M53 126V81h87v45l-6 5H59z" fill="#aa785b" stroke="#856654" stroke-width="1.15" stroke-linejoin="round"/>
+  <path d="M55 84h83v41H55z" fill="url(#seams)"/>
+  <path d="M57 131h79v8H57z" fill="#dcbf9b"/>
+  <path d="M54 136h14v10H54zm28 0h14v10H82zm28 0h14v10h-14z" fill="#9d765e"/>
+  <path d="M68 136h14v10H68zm28 0h14v10H96zm28 0h15v10h-15z" fill="#e6d4bb"/>
+  <use href="#door" transform="translate(109 166)"/>
+  <g fill="#f0e6cf" stroke="#a7906d" stroke-width="1">
+    <circle cx="56" cy="202" r="5"/><circle cx="76" cy="202" r="5"/><circle cx="126" cy="202" r="5"/>
+  </g>
+  <path d="M51 209h10m10 0h10m40 0h10" stroke="#ad8e69" stroke-width="1.25" stroke-linecap="round"/>
+  <use href="#tree" x="158" y="198"/>
+  <use href="#shrub" x="153" y="94"/>
+  <use href="#shrub" x="54" y="62"/>
+  <use href="#tree" x="68" y="63"/>
+  <use href="#tree" x="152" y="63"/>
+
+  <rect x="186" y="83" width="84" height="94" rx="4" fill="#9c9e87" opacity=".24"/>
+  <rect x="183" y="81" width="84" height="90" rx="4" fill="#d7d0b5" stroke="#96977d"/>
+  <path d="M182 117V78h86v42l-4 6h-77z" fill="#859980" stroke="#6a816b" stroke-width="1.25" stroke-linejoin="round"/>
+  <path d="M184 80h82v41h-82z" fill="url(#seams)"/>
+  <path d="M190 131h23m25 0h22" stroke="#9e9f84" stroke-width="2" stroke-linecap="round"/>
+  <use href="#door" transform="translate(235 171)"/>
+  <use href="#bench" x="253" y="204"/>
+  <use href="#shrub" x="276" y="192"/>
+  <use href="#tree" x="191" y="200"/>
+  <use href="#tree" x="270" y="63"/>
+
+  <!-- The park path skirts the pond and opens to the east crossing. -->
+  <path d="M352 209c1-35 41-34 55-66 13-32-13-72-53-72-31 0-50 25-45 52 4 20 23 25 43 34m-3 42h69" stroke="#f4ebd3" stroke-width="10" stroke-linecap="round"/>
+  <path d="M321 123c7-13 21-17 33-14 11 3 17 13 31 15 7 1 10 5 8 13-4 12-17 20-34 21-16 1-25-2-34-9s-10-16-4-26z" fill="#a5c4bd" stroke="#86aaa0" stroke-width="1.3"/>
+  <path d="M330 129c13-12 24-7 36-1m-24 12c17 6 29 5 41-1" stroke="#d6e3d1" stroke-width="1.1" stroke-linecap="round"/>
+  <path d="M372 155v13h-22v-11" fill="#bd9d76" stroke="#987d59" stroke-width="1"/>
+  <path d="M354 157v10m4-10v10m4-10v10m4-10v10" stroke="#ddbf91" stroke-width=".8"/>
+  <use href="#tree" x="312" y="58"/>
+  <use href="#tree" x="333" y="53"/>
+  <use href="#tree" x="394" y="57"/>
+  <use href="#tree" x="411" y="83"/>
+  <use href="#tree" x="304" y="174"/>
+  <use href="#tree" x="320" y="190"/>
+  <use href="#tree" x="404" y="172"/>
+  <use href="#shrub" x="311" y="151"/>
+  <use href="#shrub" x="402" y="102"/>
+  <use href="#bench" x="377" y="190"/>
+
+  <!-- Market and bakery share the east-side frontage. -->
+  <rect x="528" y="49" width="62" height="91" rx="5" fill="#6b7668" opacity=".18"/>
+  <rect x="526" y="45" width="62" height="90" rx="5" fill="#d9ddbe" stroke="#8c9c80"/>
+  <path d="M523 105V47h67v61l-8 6h-51z" fill="#8aa28b" stroke="#6e8975" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M526 49h61v57h-61z" fill="url(#seams)"/>
+  <path d="M548 62h22m-22 5h22m-22 5h22" stroke="#c1cfad" stroke-width="1.35" stroke-linecap="round" opacity=".7"/>
+  <use href="#door" transform="translate(526 112) rotate(90)"/>
+  <use href="#shrub" x="594" y="119"/>
+  <use href="#tree" x="516" y="141"/>
+  <path d="M507 148h94" stroke="#cfc09f" stroke-width="1.2"/>
+
+  <rect x="530" y="157" width="61" height="80" rx="5" fill="#9a7758" opacity=".18"/>
+  <rect x="527" y="153" width="61" height="78" rx="5" fill="#ebc7a0" stroke="#ab886e"/>
+  <path d="M524 193v-42h66v44l-6 4h-54z" fill="#bd8567" stroke="#9e7058" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M527 153h60v41h-60z" fill="url(#seams)"/>
+  <path d="M527 200h15m24 0h16" stroke="#c38e70" stroke-width="2" stroke-linecap="round"/>
+  <use href="#door" transform="translate(527 214) rotate(90)"/>
+  <use href="#shrub" x="595" y="207"/>
+  <use href="#shrub" x="564" y="235"/>
+
+  <!-- House and garden south of the main crossing. -->
+  <path d="M106 350v22h29m-80 69h78m152-63h21v55h-25" stroke="#f2ead3" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="136" y="363" width="136" height="78" rx="7" fill="#6e735f" opacity=".22"/>
+  <path d="M133 371q0-10 10-10h94v18h34v55H133z" fill="#d8c8a6" stroke="#9f9880"/>
+  <path d="M130 367l9-8h92l13 12h30v32l-9 7H130z" fill="#a5a795" stroke="#828874" stroke-width="1.25" stroke-linejoin="round"/>
+  <path d="M133 369h101v35H133zm107 4h31v29h-31z" fill="url(#seams)"/>
+  <path d="M144 359v26m90-26 3 25m-102 1h135" stroke="#c0bfac" stroke-width="1.05" stroke-linecap="round"/>
+  <use href="#door" transform="translate(133 378) rotate(90)"/>
+  <rect x="227" y="416" width="34" height="11" rx="2" fill="#d8cbbb" stroke="#aaa18d"/>
+  <path d="M231 419h26m-26 4h26" stroke="#f1e5d0" stroke-width=".9"/>
+  <use href="#tree" x="63" y="370"/>
+  <use href="#tree" x="86" y="397"/>
+  <use href="#tree" x="59" y="420"/>
+  <use href="#shrub" x="92" y="445"/>
+  <use href="#shrub" x="287" y="366"/>
+  <use href="#tree" x="305" y="447"/>
+  <use href="#shrub" x="276" y="450"/>
+
+  <path d="M350 380c44-17 77-11 119 11s68 18 112 5" stroke="#f1e8d1" stroke-width="13" stroke-linecap="round"/>
+  <path d="M351 445c25-32 57-37 95-25s76 34 130 16" stroke="#d0d4b4" stroke-width="1.25" stroke-dasharray="3 6" stroke-linecap="round"/>
+  <use href="#tree" x="382" y="401"/>
+  <use href="#tree" x="403" y="362"/>
+  <use href="#tree" x="430" y="446"/>
+  <use href="#tree" x="473" y="360"/>
+  <use href="#tree" x="521" y="426"/>
+  <use href="#tree" x="552" y="367"/>
+  <use href="#tree" x="579" y="421"/>
+  <use href="#shrub" x="367" y="440"/>
+  <use href="#shrub" x="465" y="454"/>
+  <use href="#shrub" x="560" y="449"/>
+  <use href="#bench" x="491" y="401"/>
+</svg>
