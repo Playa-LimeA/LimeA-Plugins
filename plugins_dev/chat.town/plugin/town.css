@@ -7,6 +7,7 @@
   --town-selected: #476759;
   --town-inset: clamp(8px, 2.8%, 16px);
   position: relative;
+  container-type: inline-size;
   isolation: isolate;
   flex: 1;
   min-width: 0;
@@ -46,14 +47,16 @@
 
 .town-header {
   inset: var(--town-inset) var(--town-inset) auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: 'location clock actions';
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   pointer-events: none;
 }
 
 .town-location,
+.town-clock,
 .town-reset,
 .town-map-toggle {
   border: 1px solid var(--town-border);
@@ -62,6 +65,10 @@
 }
 
 .town-location {
+  grid-area: location;
+  justify-self: start;
+  box-sizing: border-box;
+  max-inline-size: 100%;
   min-width: 0;
   overflow: hidden;
   margin: 0;
@@ -71,6 +78,18 @@
   font-weight: 650;
   line-height: 1.3;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.town-clock {
+  grid-area: clock;
+  justify-self: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  line-height: 1.3;
   white-space: nowrap;
 }
 
@@ -103,6 +122,8 @@
 }
 
 .town-header-actions {
+  grid-area: actions;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -146,6 +167,19 @@
   padding: 62px var(--town-inset) var(--town-card-reserve, 88px);
   background: #eee5d4;
   scrollbar-color: #ac9e87 #eee5d4;
+}
+
+@container (max-width: 20rem) {
+  .town-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'clock clock'
+      'location actions';
+  }
+
+  .town-map {
+    padding-block-start: 96px;
+  }
 }
 
 .town-map[hidden] {
@@ -459,4 +493,49 @@
 .town-role-face img {
   display: block;
   object-fit: cover;
+}
+
+.town-clock-settings {
+  display: grid;
+  gap: 8px;
+  padding-block-end: 12px;
+  border-block-end: 1px solid var(--border);
+}
+
+.town-clock-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.town-clock-settings-copy {
+  display: grid;
+  flex: 1 1 15rem;
+  gap: 4px;
+}
+
+.town-clock-settings h2 {
+  margin: 0;
+  font-size: var(--ui-text-base, 1rem);
+  font-weight: 600;
+}
+
+.town-clock-settings p,
+.town-clock-example {
+  color: var(--muted-foreground);
+  font-size: var(--ui-text-sm, 0.875rem);
+}
+
+.town-clock-settings p {
+  margin: 0;
+}
+
+.town-clock-settings select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius-md, 8px);
+  background: var(--background);
+  color: inherit;
+  font: inherit;
 }

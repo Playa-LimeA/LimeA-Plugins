@@ -1,7 +1,7 @@
 {
   "id": "chat.town",
   "name": "陪伴小镇",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "apiVersion": 13,
   "hostVersion": ">=0.1.1 <1",
   "entry": "backend.mjs",
@@ -169,6 +169,7 @@
     "routes.mjs",
     "routine.mjs",
     "journey.mjs",
+    "town-clock.mjs",
     "navigation.mjs",
     "town-state.mjs",
     "town-tools.mjs",

@@ -63,6 +63,7 @@ const text = {
     title: '陪伴小镇',
     map: '地图',
     mapTitle: '小镇地图',
+    clock: { real: '现实时间', virtual: '虚拟时间', unavailable: '暂时无法读取小镇时间' },
     closeMap: '返回场景',
     follow: '回到角色',
     returnHome: '回到家',
@@ -109,6 +110,7 @@ const text = {
     title: 'Companion Town',
     map: 'Map',
     mapTitle: 'Town map',
+    clock: { real: 'Real time', virtual: 'Virtual time', unavailable: 'Town time unavailable' },
     closeMap: 'Back to scene',
     follow: 'Follow character',
     returnHome: 'Back to home',
@@ -156,6 +158,11 @@ const text = {
 export function mount(container, context) {
   const language = context.language.startsWith('zh') ? 'zh' : 'en';
   const words = text[language];
+  const clockFormat = new Intl.DateTimeFormat(language, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
   const name = (id, residence) => id === 'home' && residence?.name
     ? words.homeOf(residence.name)
     : locations[id].name[language];
@@ -166,6 +173,8 @@ export function mount(container, context) {
   const root = element('section', 'town');
   const header = element('header', 'town-header');
   const locationTitle = element('h2', 'town-location', words.title);
+  const townTime = element('time', 'town-clock', '--:--');
+  townTime.setAttribute('aria-label', words.clock.unavailable);
   const reset = element('button', 'town-reset', words.reset);
   reset.type = 'button';
   reset.disabled = true;
@@ -175,7 +184,7 @@ export function mount(container, context) {
   mapToggle.setAttribute('aria-controls', 'companion-town-map');
   const actions = element('div', 'town-header-actions');
   actions.append(mapToggle, reset);
-  header.append(locationTitle, actions);
+  header.append(locationTitle, townTime, actions);
 
   const map = createTownMap(
     context.resourceBase,
@@ -215,6 +224,30 @@ export function mount(container, context) {
   let latest;
   let mapOpen = false;
   let browseScene;
+  let displayedMinute;
+  let displayedClockMode;
+
+  function updateClock(sample) {
+    const { mode, at } = sample ?? {};
+    const valid = (mode === 'real' || mode === 'virtual') &&
+      Number.isSafeInteger(at) && at >= 0 && at <= 8.64e15;
+    const minute = valid ? Math.floor(at / 60_000) : undefined;
+    const clockMode = valid ? mode : undefined;
+    if (minute === displayedMinute && clockMode === displayedClockMode) return;
+    displayedMinute = minute;
+    displayedClockMode = clockMode;
+    if (!valid) {
+      townTime.textContent = '--:--';
+      townTime.removeAttribute('datetime');
+      townTime.setAttribute('aria-label', words.clock.unavailable);
+      return;
+    }
+    const displayTime = new Date(minute * 60_000);
+    const value = clockFormat.format(displayTime);
+    townTime.textContent = value;
+    townTime.dateTime = displayTime.toISOString();
+    townTime.setAttribute('aria-label', `${words.clock[clockMode]} ${value}`);
+  }
 
   function showLoading() {
     card.setPhase('loading');
@@ -334,6 +367,7 @@ export function mount(container, context) {
     map.update(scene, resident?.scene);
     const title = name(scene, town?.residence);
     locationTitle.textContent = mapOpen ? words.mapTitle : title;
+    updateClock(town?.clock);
     updateStatus(resident, owner, readFailed);
 
     if (!mapOpen) {

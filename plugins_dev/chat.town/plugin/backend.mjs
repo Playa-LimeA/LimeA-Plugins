@@ -4,6 +4,7 @@ import { makePreferences } from './routine.mjs';
 import { registerTownTools } from './town-tools.mjs';
 import { isTownState } from './town-state.mjs';
 import { makeTownJourney } from './journey.mjs';
+import { changeTownClock, createTownClock, projectTownClock, realTownClock } from './town-clock.mjs';
 
 const migrations = [
   {
@@ -30,6 +31,19 @@ const migrations = [
       + 'CREATE TABLE town_roster (singleton INTEGER PRIMARY KEY CHECK(singleton = 1), revision INTEGER NOT NULL, mutation_id TEXT) STRICT;'
       + 'INSERT INTO town_roster(singleton, revision) VALUES (1, 0);'
       + 'CREATE TABLE town_receipts (character_id TEXT NOT NULL, generation INTEGER NOT NULL, execution_id TEXT NOT NULL, request TEXT NOT NULL, response TEXT NOT NULL, PRIMARY KEY(character_id, generation, execution_id)) STRICT;',
+  },
+];
+
+const clockMigrations = [
+  {
+    id: '1000_town_clock',
+    sql: `CREATE TABLE town_clock (
+      singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+      mode TEXT NOT NULL CHECK(mode IN ('real', 'virtual')),
+      revision INTEGER NOT NULL CHECK(revision > 0),
+      wall_anchor INTEGER NOT NULL CHECK(wall_anchor >= 0),
+      town_anchor INTEGER NOT NULL CHECK(town_anchor >= 0)
+    ) STRICT;`,
   },
 ];
 
@@ -70,11 +84,13 @@ function savedCheckpoint(row, state) {
     : null;
 }
 
-function makeRole(characterId, generation, row, now, residenceStatus) {
+function makeRole(characterId, generation, row, now, townClock, residenceStatus) {
   const state = savedState(row);
   const checkpoint = savedCheckpoint(row, state);
   const preference = json(row?.preference_json) ?? makePreferences(characterId);
-  const journey = makeTownJourney(state, now, { preference, checkpoint, restart: true, residenceStatus });
+  const journey = makeTownJourney(state, now, {
+    preference, checkpoint, restart: true, townClock, residenceStatus,
+  });
   const snapshot = journey.read(now);
   return { generation, preference, checkpoint: journey.checkpoint(), snapshot, updatedAt: now };
 }
@@ -185,8 +201,13 @@ const nameCacheMs = 5000;
 
 export async function apply(context) {
   const db = await context.storage.openDatabase({ name: 'town', migrations });
+  const clockDb = await context.storage.openDatabase({ name: 'town-clock', migrations: clockMigrations });
+  const savedClock = await clockDb.get(
+    'SELECT mode, revision, wall_anchor AS wallAnchor, town_anchor AS townAnchor FROM town_clock WHERE singleton=1',
+  );
   const directory = context.townCharacters;
   const roles = new Map();
+  let townClock = savedClock ? createTownClock(savedClock) : realTownClock;
   let revision = (await db.get('SELECT revision FROM town_roster WHERE singleton=1')).revision;
   let pending = Promise.resolve();
   let disposed = false;
@@ -251,7 +272,7 @@ export async function apply(context) {
     }));
     for (const row of rows) {
       const role = makeRole(
-        row.character_id, row.resident_generation, row, now,
+        row.character_id, row.resident_generation, row, now, townClock,
         (reference) => residenceStatusIn(savedRoster, reference),
       );
       roles.set(row.character_id, role);
@@ -272,7 +293,7 @@ export async function apply(context) {
     const now = Date.now();
     const generation = revision + 1;
     const mutation = randomUUID();
-    const incoming = added.map((id) => [id, makeRole(id, generation, null, now)]);
+    const incoming = added.map((id) => [id, makeRole(id, generation, null, now, townClock)]);
     const remaining = new Map([...roles].filter(([id]) => present.has(id)));
     for (const [id, role] of incoming) remaining.set(id, role);
     const reconciled = [];
@@ -315,6 +336,7 @@ export async function apply(context) {
     const journey = makeTownJourney(null, now, {
       preference: role.preference,
       checkpoint: role.checkpoint,
+      townClock,
       residenceStatus: (reference) => residenceStatusIn(roster, reference),
     });
     const decision = change ? change(journey, now) : null;
@@ -332,7 +354,10 @@ export async function apply(context) {
   }
 
   function due(role) {
-    return role.snapshot.nextAt === null ? Infinity : Math.max(role.snapshot.nextAt, role.retryAt ?? 0);
+    if (role.snapshot.nextAt === null) return Infinity;
+    const next = (role.checkpoint.scheduleRevision ?? 0) === townClock.revision
+      ? role.snapshot.nextAt : townClock.wallAnchor;
+    return Math.max(next, role.retryAt ?? 0);
   }
 
   function schedule() {
@@ -473,6 +498,7 @@ export async function apply(context) {
       scene,
       ...(residence ? { residence } : {}),
       occupants,
+      clock: projectTownClock(townClock, Date.now()),
     };
   }
 
@@ -487,6 +513,32 @@ export async function apply(context) {
   if (disposed) return;
   schedule();
 
+  context.commands.register('read-town-clock', (payload) => {
+    if (payload !== undefined) throw new Error('invalid-town-clock');
+    return enqueue(() => projectTownClock(townClock, Date.now()));
+  });
+  context.commands.register('set-town-clock', (payload) => {
+    if (
+      !payload || typeof payload !== 'object' || Array.isArray(payload) ||
+      (payload.mode !== 'real' && payload.mode !== 'virtual') ||
+      Object.keys(payload).some((key) => key !== 'mode')
+    ) throw new Error('invalid-town-clock');
+    return enqueue(async () => {
+      if (payload.mode !== townClock.mode) {
+        const next = changeTownClock(townClock, payload.mode, Date.now());
+        await clockDb.run(
+          'INSERT INTO town_clock (singleton, mode, revision, wall_anchor, town_anchor) VALUES (1, ?, ?, ?, ?) '
+            + 'ON CONFLICT(singleton) DO UPDATE SET mode=excluded.mode, revision=excluded.revision, '
+            + 'wall_anchor=excluded.wall_anchor, town_anchor=excluded.town_anchor',
+          [next.mode, next.revision, next.wallAnchor, next.townAnchor],
+        );
+        if (disposed) throw new Error('town-closed');
+        townClock = next;
+        schedule();
+      }
+      return projectTownClock(townClock, Date.now());
+    });
+  });
   context.commands.register('list-town-residents', (payload) => {
     if (payload !== undefined && (!payload || Object.keys(payload).length)) {
       throw new Error('invalid-town-roster');

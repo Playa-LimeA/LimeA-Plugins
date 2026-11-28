@@ -6,6 +6,7 @@ import {
   homeSchedule, makePreferences,
 } from './routine.mjs';
 import { activityCatalog, isTownState, walkingActivity } from './town-state.mjs';
+import { realTownClock } from './town-clock.mjs';
 
 const walkingSpeed = 3.5;
 const maxCatchUp = 5 * 60 * 1000;
@@ -60,6 +61,7 @@ export function makeTownJourney(
     checkpoint,
     restart = false,
     residenceStatus = () => 'not_resident',
+    townClock = realTownClock,
   } = {},
 ) {
   const saved = isTownState(initial) ? initial : null;
@@ -80,6 +82,10 @@ export function makeTownJourney(
   let recent = checkpoint?.recent ?? [];
   let breakfastDay = checkpoint?.breakfastDay;
 
+  if (checkpoint && (checkpoint.scheduleRevision ?? 0) !== townClock.revision) {
+    rebaseSchedule();
+  }
+
   if (checkpoint && restart) {
     clock = time;
     if (!paused && motion && (crosswalkExit || goal?.manual || goal?.until > time)) {
@@ -91,11 +97,50 @@ export function makeTownJourney(
     }
   }
 
+  function scheduleAt(at) {
+    const townAt = townClock.at(at);
+    const period = homeSchedule(townAt, preference);
+    return {
+      townAt,
+      sleeping: period.sleeping,
+      until: at + townClock.wallDuration(period.endsAt - townAt),
+    };
+  }
+
+  // The wall timeline still owns motion. Only routine deadlines and remaining stays
+  // change when the durable town clock changes.
+  function rebaseSchedule() {
+    const at = Math.max(clock, townClock.wallAnchor);
+    const schedule = scheduleAt(at);
+    clock = at;
+    if (goal && !goal.manual) {
+      const wakingUp = goal.activity === 'sleeping' && !schedule.sleeping;
+      goal = { ...goal, until: wakingUp ? at : schedule.until };
+    }
+    if (!stay) {
+      if (nextAt !== null) nextAt = Math.max(nextAt, at);
+      return;
+    }
+
+    const previousRate = checkpoint.scheduleRate === 10 ? 10 : 1;
+    const previousRemaining = Math.max(0, paused ? remaining : stay.endsAt - at);
+    const until = goal && !goal.manual ? goal.until : Infinity;
+    const endsAt = stay.activity === 'sleeping' && goal && !goal.manual
+      ? until
+      : Math.min(at + townClock.wallDuration(previousRemaining * previousRate), until);
+    stay = { ...stay, endsAt };
+    if (paused) remaining = endsAt - at;
+    else nextAt = endsAt;
+  }
+
   function selectGoal(at) {
-    const activity = chooseRoutineActivity({ preference, at, scene, recent, sequence, breakfastDay });
+    const { townAt, until } = scheduleAt(at);
+    const activity = chooseRoutineActivity({
+      preference, at: townAt, scene, recent, sequence, breakfastDay,
+    });
     const { scene: destination, point: arrival } = activityCatalog[activity];
-    const until = homeSchedule(at, preference).endsAt;
-    const streetStop = destination !== 'home' && chooseStreetStop({ preference, at, recent, sequence });
+    const streetStop = destination !== 'home' &&
+      chooseStreetStop({ preference, at: townAt, recent, sequence });
     if (streetStop) return { scene: 'street_corner', point: streetStop, until };
     return { scene: destination, point: arrival, activity, until };
   }
@@ -140,10 +185,11 @@ export function makeTownJourney(
       }
       if (!step.next) {
         const activity = goal.activity ?? 'idle';
-        const endsAt = at + activityDwell(preference, at, sequence, activity);
+        const townAt = townClock.at(at);
+        const endsAt = at + townClock.wallDuration(activityDwell(preference, townAt, sequence, activity));
         nextAt = goal.manual ? endsAt : Math.min(endsAt, goal.until);
         stay = { activity, endsAt: nextAt };
-        if (activity === 'having_breakfast') breakfastDay = calendarDay(at);
+        if (activity === 'having_breakfast') breakfastDay = calendarDay(townAt);
         recent = [{ scene, activity }, ...recent].slice(0, 4);
         sequence++;
         return;
@@ -269,6 +315,7 @@ export function makeTownJourney(
       return {
         version: 1, clock, scene, point, residence, paused, remaining, nextAt, motion,
         crosswalkExit, goal, requested, stay, sequence, recent, breakfastDay,
+        ...(townClock.revision ? { scheduleRevision: townClock.revision, scheduleRate: townClock.rate } : {}),
       };
     },
   };
